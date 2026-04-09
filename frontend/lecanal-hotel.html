@@ -1,0 +1,3622 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Le Canal — Front Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="index.css">
+<link rel="stylesheet" href="lecanal-hotel.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="bookingcom-apr-2026.js"></script>
+<style>
+  /* ── Override / app-specific tweaks on top of lecanal-hotel.css ── */
+  :root {
+    --tm30-banner-offset: 0px;
+    /* alias kept for JS compatibility */
+    --gold: var(--primary);
+    --gold-light: var(--primary-light);
+  }
+
+  /* Legacy alias */
+  .btn-gold { background: var(--navy); color: white; padding: 13px 20px; border-radius: var(--radius-md); font-weight: 600; font-size: 15px; font-family: "Kanit", system-ui, sans-serif; border: none; cursor: pointer; box-shadow: var(--shadow-navy); }
+  .cal-grid { display: grid; }
+  .cal-header { position: sticky; top: 0; z-index: 10; background: var(--surface); border-bottom: 1px solid #e5e7eb; }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- TM30 WARNING BANNER -->
+<div id="tm30Banner" class="tm30-warning" style="display:none; position:fixed; top:0; left:0; right:0; z-index:150; margin:0; border-radius:0; padding:10px 16px;">
+  ⚠️ <span id="tm30BannerText"></span>
+</div>
+
+<!-- ==================== PAGES ==================== -->
+
+<!-- PAGE: DASHBOARD -->
+<div id="page-dashboard" class="page active content-area">
+  <!-- Header -->
+  <div class="dashboard-header">
+    <div class="dashboard-header-content dashboard-hero" style="position:relative;z-index:1;">
+      <div class="dashboard-hero-row">
+        <div>
+          <div class="dashboard-kicker">Le Canal</div>
+          <div class="font-serif dashboard-title">Boutique House</div>
+          <div id="todayDate" class="dashboard-date"></div>
+        </div>
+        <div class="hotel-badge">LC</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-body">
+    <div id="dashboardStatusStrip" class="dashboard-status-strip"></div>
+
+    <div class="dashboard-stats">
+      <div class="stat-card green">
+        <span class="stat-card-icon">🛎️</span>
+        <div class="stat-card-num" id="stat-checkin">0</div>
+        <div class="stat-card-label">Check-in วันนี้</div>
+      </div>
+      <div class="stat-card red">
+        <span class="stat-card-icon">🚪</span>
+        <div class="stat-card-num" id="stat-checkout">0</div>
+        <div class="stat-card-label">Check-out วันนี้</div>
+      </div>
+      <div class="stat-card navy">
+        <span class="stat-card-icon">🛏️</span>
+        <div class="stat-card-num" id="stat-occupied">0</div>
+        <div class="stat-card-label">ห้องที่มีแขก</div>
+      </div>
+      <div class="stat-card gold">
+        <span class="stat-card-icon">✅</span>
+        <div class="stat-card-num" id="stat-available">13</div>
+        <div class="stat-card-label">ห้องว่าง</div>
+      </div>
+    </div>
+
+    <div class="dashboard-layout">
+      <div class="dashboard-main">
+        <section class="dashboard-panel">
+          <div class="dashboard-panel-head">
+            <div>
+              <div class="dashboard-panel-kicker">Front Desk</div>
+              <div class="dashboard-panel-title">Today Actions</div>
+            </div>
+            <div class="dashboard-panel-count" id="dashboardActionsCount">0</div>
+          </div>
+          <div id="dashboardActionsList"></div>
+        </section>
+
+        <section class="dashboard-panel">
+          <div class="dashboard-panel-head">
+            <div>
+              <div class="dashboard-panel-kicker">Next 48 Hours</div>
+              <div class="dashboard-panel-title">Upcoming Arrivals & Departures</div>
+            </div>
+            <div class="dashboard-panel-count" id="dashboardUpcomingCount">0</div>
+          </div>
+          <div id="dashboardUpcomingList"></div>
+        </section>
+
+        <section class="dashboard-panel">
+          <div class="dashboard-panel-head">
+            <div>
+              <div class="dashboard-panel-kicker">Housekeeping</div>
+              <div class="dashboard-panel-title">Room Turnover</div>
+            </div>
+            <div class="dashboard-panel-count" id="dashboardTurnoverCount">0</div>
+          </div>
+          <div id="dashboardTurnoverList"></div>
+        </section>
+      </div>
+
+      <div class="dashboard-side">
+        <section class="dashboard-panel dashboard-panel-alert">
+          <div class="dashboard-panel-head">
+            <div>
+              <div class="dashboard-panel-kicker">Attention</div>
+              <div class="dashboard-panel-title">Urgent Alerts</div>
+            </div>
+            <div class="dashboard-panel-count dashboard-panel-count-alert" id="dashboardAlertsCount">0</div>
+          </div>
+          <div id="dashboardAlertsList"></div>
+        </section>
+
+        <section class="dashboard-panel">
+          <div class="dashboard-panel-head">
+            <div>
+              <div class="dashboard-panel-kicker">Shortcuts</div>
+              <div class="dashboard-panel-title">Quick Actions</div>
+            </div>
+          </div>
+          <div class="dashboard-quick-grid">
+            <button class="dashboard-quick-btn" onclick="openNewBookingModal()">
+              <span class="dashboard-quick-icon">+</span>
+              <span>New Booking</span>
+            </button>
+            <button class="dashboard-quick-btn" onclick="showPage('monthly')">
+              <span class="dashboard-quick-icon">CAL</span>
+              <span>Open Schedule</span>
+            </button>
+            <button class="dashboard-quick-btn" onclick="showPage('housekeeping')">
+              <span class="dashboard-quick-icon">HK</span>
+              <span>Housekeeping</span>
+            </button>
+            <button class="dashboard-quick-btn" onclick="showPage('settings')">
+              <span class="dashboard-quick-icon">AI</span>
+              <span>AI Advise</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="dashboard-panel">
+          <div class="dashboard-panel-head">
+            <div>
+              <div class="dashboard-panel-kicker">Recommendation</div>
+              <div class="dashboard-panel-title">AI Advise Snapshot</div>
+            </div>
+          </div>
+          <div id="dashboardAISnapshot"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: ROOMS -->
+<div id="page-rooms" class="page content-area">
+  <div class="page-header">
+    <div class="page-header-content">
+      <div class="font-serif" style="color:white; font-size:20px;">Room Status</div>
+      <div style="color: rgba(255,255,255,0.55); font-size:13px; margin-top:4px;">สถานะห้องพักทั้งหมด</div>
+    </div>
+  </div>
+  <!-- Legend -->
+  <div style="display:flex; gap:8px; overflow-x:auto; padding:12px 16px 0; scrollbar-width:none;">
+    <span style="background:#DCFCE7;color:#166534;padding:4px 10px;border-radius:8px;font-size:11px;white-space:nowrap;">🟢 ว่าง</span>
+    <span style="background:var(--navy);color:white;padding:4px 10px;border-radius:8px;font-size:11px;white-space:nowrap;">🔵 มีแขก</span>
+    <span style="background:#FEF3C7;color:#92400E;padding:4px 10px;border-radius:8px;font-size:11px;white-space:nowrap;">🟡 Check-out</span>
+    <span style="background:#DBEAFE;color:#1E40AF;padding:4px 10px;border-radius:8px;font-size:11px;white-space:nowrap;">🔵 Check-in</span>
+    <span style="background:#F3F4F6;color:#374151;padding:4px 10px;border-radius:8px;font-size:11px;white-space:nowrap;">⚙️ Maint.</span>
+  </div>
+  <div style="padding:12px 16px;" id="room-grid"></div>
+</div>
+
+<!-- PAGE: GUESTS -->
+<div id="page-guests" class="page content-area">
+  <div class="page-header">
+    <div class="page-header-content">
+      <div class="font-serif" style="color:white; font-size:20px;">Guests</div>
+      <div style="margin-top:10px; position:relative;">
+        <input type="text" id="guestSearch" placeholder="🔍 ค้นหา ชื่อ / ห้อง / Booking ID" style="padding-right:36px; background:rgba(255,255,255,0.12); border-color:rgba(255,255,255,0.22); color:white;" oninput="renderGuests()">
+      </div>
+    </div>
+  </div>
+  <!-- Filter chips -->
+  <div style="display:flex; gap:8px; overflow-x:auto; padding:12px 16px; scrollbar-width:none;" id="guest-filters">
+    <button class="filter-chip active" onclick="setGuestFilter('all',this)">ทั้งหมด</button>
+    <button class="filter-chip" onclick="setGuestFilter('checkin_today',this)">Check-in วันนี้</button>
+    <button class="filter-chip" onclick="setGuestFilter('checkout_today',this)">Check-out วันนี้</button>
+    <button class="filter-chip" onclick="setGuestFilter('staying',this)">กำลังพัก</button>
+    <button class="filter-chip" onclick="setGuestFilter('upcoming',this)">กำลังจะมา</button>
+  </div>
+  <div style="padding:0 16px 16px;" id="guest-list"></div>
+  <!-- FAB -->
+  <button onclick="openNewBookingModal()" class="fab">+</button>
+</div>
+
+<!-- PAGE: UPLOAD -->
+<div id="page-upload" class="page content-area">
+  <div class="page-header">
+    <div class="page-header-content">
+      <div class="font-serif" style="color:white; font-size:20px;">Import Bookings</div>
+      <div style="color:rgba(255,255,255,0.55); font-size:13px; margin-top:4px;">นำเข้าข้อมูลการจอง</div>
+    </div>
+  </div>
+  <div style="padding:16px;">
+    <div class="card" style="padding:20px; margin-bottom:16px;">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div style="font-size:40px; margin-bottom:12px;">📂</div>
+        <div style="font-weight:600; color:var(--navy); margin-bottom:4px;">อัพโหลดไฟล์</div>
+        <div style="font-size:13px; color:var(--muted);">ใช้ไฟล์ Booking.com export ได้ทันที<br>รองรับ .xls, .xlsx และ .csv</div>
+      </div>
+      <input type="file" id="fileInput" accept=".csv,.xls,.xlsx" style="display:none" onchange="handleFileUpload(event)">
+    </div>
+
+    <!-- Preview -->
+    <div id="upload-preview" style="display:none;">
+      <div class="card" style="padding:16px; margin-bottom:12px;">
+        <div style="font-weight:600; color:var(--navy); margin-bottom:12px;">📋 ตัวอย่างข้อมูล</div>
+        <div id="preview-table" style="overflow-x:auto;"></div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn-outline" onclick="cancelUpload()" style="flex:1;">ยกเลิก</button>
+        <button class="btn-primary" id="confirmImportBtn" style="flex:2;" onclick="confirmImport()">นำเข้าข้อมูล</button>
+      </div>
+    </div>
+
+    <!-- Column mapping guide -->
+    <div class="card" style="padding:16px;">
+      <div style="font-weight:600; color:var(--navy); margin-bottom:10px;">📌 Booking.com Export Format</div>
+      <div style="font-size:12px; color:var(--navy); margin-bottom:8px;">นำเข้าไฟล์ export ของ Booking.com ได้ทันที ทั้งแบบไทยและอังกฤษ และระบบจะ assign ห้องตามประเภทยูนิตก่อน fallback ไป inventory ปัจจุบัน</div>
+      <div style="font-size:12px; color:var(--muted); line-height:1.8;">
+        หมายเลขการจอง / Reservation number, ชื่อผู้เข้าพัก / Guest name,<br>
+        เช็คอิน / Check-in, เช็คเอาท์ / Check-out, สถานะ / Status,<br>
+        ยูนิต / Units, ผู้ใหญ่ / Adults, เด็ก / Children,<br>
+        ประเภทยูนิต / Room type, Booker country, หมายเหตุ / Remarks
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: SETTINGS -->
+<div id="page-settings" class="page content-area">
+  <div class="page-header">
+    <div class="page-header-content">
+      <div class="font-serif" style="color:white; font-size:20px;">AI Advise</div>
+      <div style="color:rgba(255,255,255,0.58); font-size:13px; margin-top:4px;">TM30 alerts and front desk recommendations</div>
+    </div>
+  </div>
+  <div style="padding:16px; display:flex; flex-direction:column; gap:14px;">
+    <div class="card" style="padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+        <div>
+          <div style="font-size:12px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted);">AI Advise</div>
+          <div style="font-size:18px; font-weight:800; color:var(--navy); margin-top:2px;" id="aiAdviceHeadline">No urgent advice</div>
+        </div>
+        <div id="aiAdviceBadge" style="background:#EFF6FF; color:#1D4ED8; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:700;">0 alerts</div>
+      </div>
+      <div id="aiAdviceSummary" style="font-size:13px; color:var(--muted); line-height:1.6;"></div>
+    </div>
+    <div class="card" style="padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
+        <div style="font-weight:700; color:var(--navy);">TM30 Follow-up</div>
+        <div id="tm30PendingCount" style="font-size:12px; font-weight:700; color:var(--muted);">0 pending</div>
+      </div>
+      <div id="tm30AdviceList"></div>
+    </div>
+    <div class="card" style="padding:16px;">
+      <label style="font-size:13px; color:var(--muted); font-weight:600; display:block; margin-bottom:6px;">ชื่อโรงแรม</label>
+      <input type="text" id="settingHotelName" value="Le Canal Boutique House">
+    </div>
+    <div class="card" style="padding:16px;">
+      <label style="font-size:13px; color:var(--muted); font-weight:600; display:block; margin-bottom:6px;">วันที่ (สำหรับทดสอบ)</label>
+      <input type="date" id="settingDate">
+    </div>
+    <div class="card" style="padding:16px;">
+      <label style="font-size:13px; color:var(--muted); font-weight:600; display:block; margin-bottom:8px;">บทบาทผู้ใช้</label>
+      <div style="display:flex; gap:8px;">
+        <button id="roleBtn-frontdesk" onclick="setRole('frontdesk')" class="btn-primary" style="flex:1; font-size:13px; padding:10px 8px;">🧑‍💼 Front Desk</button>
+        <button id="roleBtn-housekeeper" onclick="setRole('housekeeper')" class="btn-outline" style="flex:1; font-size:13px; padding:10px 8px;">🧹 Housekeeper</button>
+      </div>
+    </div>
+    <div class="card" style="padding:16px;">
+      <div style="font-weight:600; color:var(--navy); margin-bottom:12px;">ข้อมูล</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn-outline" onclick="exportData()">💾 Export JSON</button>
+        <button onclick="showPage('upload')" class="settings-action-btn settings-action-import">📤 Import Bookings (CSV/Excel)</button>
+        <button onclick="loadSampleData()" class="settings-action-btn settings-action-sample">🧪 โหลด Booking.com เม.ย. 2026</button>
+        <button onclick="confirmClearData()" class="settings-action-btn settings-action-clear">🗑️ ลบข้อมูลทั้งหมด</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HOUSEKEEPING PAGE -->
+<div id="page-housekeeping" class="page content-area">
+  <div class="page-header">
+    <div class="page-header-content" style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="font-serif" style="color:white; font-size:20px;">🧹 Housekeeping</div>
+      <button onclick="showPage('dashboard')" style="background:rgba(255,255,255,0.15); color:white; border:none; padding:7px 14px; border-radius:var(--radius-sm); font-size:13px; font-family:'Kanit',sans-serif; cursor:pointer;">← Back</button>
+    </div>
+  </div>
+  <div style="padding:16px;" id="hk-board"></div>
+</div>
+
+<!-- PAGE: MONTHLY VIEW -->
+<!-- PAGE: SCHEDULE (Day / Week / Month) -->
+<div id="page-monthly" class="page content-area">
+  <!-- Header -->
+  <div id="monthlyHeader" class="page-header" style="padding:8px 12px 8px; padding-top:calc(8px + env(safe-area-inset-top));">
+    <div class="page-header-content">
+      <!-- Period toggle: Day / Week / Month -->
+      <div style="display:flex; background:rgba(255,255,255,0.10); border-radius:8px; padding:2px; margin-bottom:6px;">
+        <button id="period-btn-day"   onclick="setPeriod('day')"   style="flex:1;padding:4px 0;border-radius:6px;border:none;font-size:11px;font-weight:600;font-family:'Kanit',sans-serif;cursor:pointer;transition:all 0.2s;background:white;color:var(--navy);">Day</button>
+        <button id="period-btn-week"  onclick="setPeriod('week')"  style="flex:1;padding:4px 0;border-radius:6px;border:none;font-size:11px;font-weight:600;font-family:'Kanit',sans-serif;cursor:pointer;transition:all 0.2s;background:transparent;color:rgba(255,255,255,0.7);">Week</button>
+        <button id="period-btn-month" onclick="setPeriod('month')" style="flex:1;padding:4px 0;border-radius:6px;border:none;font-size:11px;font-weight:600;font-family:'Kanit',sans-serif;cursor:pointer;transition:all 0.2s;background:transparent;color:rgba(255,255,255,0.7);">Month</button>
+      </div>
+      <!-- Nav row -->
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="navigatePeriod(-1)" style="background:rgba(255,255,255,0.15);color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+        <div style="text-align:center;">
+          <div id="scheduleLabel" class="font-serif" style="color:white;font-size:17px;font-weight:600;"></div>
+          <div id="scheduleSubLabel" style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:1px;"></div>
+        </div>
+        <button onclick="navigatePeriod(1)"  style="background:rgba(255,255,255,0.15);color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">›</button>
+      </div>
+      <!-- Stats bar -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px;" id="sched-stats-bar"></div>
+    </div>
+  </div>
+
+  <!-- Sub-view toggle (Gantt / Grid / Summary — only for Month) -->
+  <div id="subview-tabs" style="display:flex;gap:8px;padding:10px 16px 0;overflow-x:auto;scrollbar-width:none;">
+    <button id="view-btn-gantt"    onclick="setCalView('gantt')"    class="filter-chip active"  style="white-space:nowrap;">📊 Gantt</button>
+    <button id="view-btn-calendar" onclick="setCalView('calendar')" class="filter-chip"          style="white-space:nowrap;">📅 ปฏิทิน</button>
+    <button id="view-btn-summary"  onclick="setCalView('summary')"  class="filter-chip"          style="white-space:nowrap;">📈 สรุป</button>
+  </div>
+
+  <!-- Legend -->
+  <div id="gantt-legend" style="display:flex;gap:8px;padding:8px 16px 0;overflow-x:auto;scrollbar-width:none;">
+    <span style="background:var(--navy);color:white;padding:3px 9px;border-radius:6px;font-size:10px;white-space:nowrap;">■ Checked In</span>
+    <span style="background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;padding:3px 9px;border-radius:6px;font-size:10px;white-space:nowrap;">■ Pending</span>
+    <span style="background:#E5E7EB;color:#6B7280;padding:3px 9px;border-radius:6px;font-size:10px;white-space:nowrap;">■ Checked Out</span>
+  </div>
+
+  <div id="scheduleDock" class="schedule-dock" aria-label="Schedule controls">
+    <button id="scheduleChromeToggle" type="button" class="schedule-dock-btn" onclick="toggleScheduleChrome()">ย่อส่วนหัว</button>
+    <button id="scheduleNavToggle" type="button" class="schedule-dock-btn schedule-dock-btn-primary" onclick="toggleScheduleMenu()">ซ่อนเมนู</button>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div id="view-gantt"    style="padding:8px 0 16px;"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;" id="gantt-wrap"><div id="gantt-inner"></div></div></div>
+  <div id="view-calendar" style="display:none;padding:10px 16px 16px;"><div id="cal-month-grid"></div></div>
+  <div id="view-summary"  style="display:none;padding:10px 16px 16px;"><div id="month-summary-detail"></div></div>
+  <!-- DAY VIEW -->
+  <div id="view-day" style="display:none;padding:10px 16px 16px;"><div id="day-content"></div></div>
+  <!-- WEEK VIEW (Gantt-7) -->
+  <div id="view-week" style="display:none;padding:8px 0 16px;"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;" id="week-wrap"><div id="week-inner"></div></div></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="nav-btn active" id="nav-dashboard" onclick="showPage('dashboard')">
+      <span class="nav-icon-wrap"><span class="nav-icon">🏠</span></span>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-btn" id="nav-rooms" onclick="showPage('rooms')">
+      <span class="nav-icon-wrap"><span class="nav-icon">🛏️</span></span>
+      <span>Rooms</span>
+    </button>
+    <button class="nav-btn" id="nav-monthly" onclick="showPage('monthly')">
+      <span class="nav-icon-wrap"><span class="nav-icon">📊</span></span>
+      <span>Schedule</span>
+    </button>
+    <button class="nav-btn" id="nav-guests" onclick="showPage('guests')">
+      <span class="nav-icon-wrap"><span class="nav-icon">📋</span></span>
+      <span>Guests</span>
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
+      <span class="nav-icon-wrap"><span class="nav-icon">🔔</span></span>
+      <span>AI Advise</span>
+    </button>
+  </div>
+</nav>
+
+<!-- GUEST DETAIL MODAL -->
+<div class="modal-overlay" id="guestModal" onclick="handleModalClick(event)">
+  <div class="modal-sheet" id="guestModalContent">
+    <div class="drag-handle"></div>
+    <div id="guestModalBody" style="padding:0 16px 16px;"></div>
+  </div>
+</div>
+
+<!-- NEW BOOKING MODAL -->
+<div class="modal-overlay" id="newBookingModal" onclick="handleNewBookingModalClick(event)">
+  <div class="modal-sheet">
+    <div class="drag-handle"></div>
+    <div style="padding:0 16px 16px;">
+      <div class="font-serif" style="font-size:20px; color:var(--navy); margin-bottom:16px;">+ เพิ่มการจองใหม่</div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">ชื่อแขก *</label>
+          <input type="text" id="nb-name" placeholder="ชื่อ-นามสกุล">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Check-in *</label>
+            <input type="date" id="nb-checkin">
+          </div>
+          <div>
+            <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Check-out *</label>
+            <input type="date" id="nb-checkout">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">ห้อง *</label>
+          <select id="nb-room">
+            <option value="">เลือกห้อง</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">แหล่งจอง</label>
+          <select id="nb-source">
+            <option value="Direct">Direct</option>
+            <option value="Booking.com">Booking.com</option>
+            <option value="Airbnb">Airbnb</option>
+            <option value="Agoda">Agoda</option>
+            <option value="Walk-in">Walk-in</option>
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">ผู้ใหญ่</label>
+            <input type="text" id="nb-adults" value="2">
+          </div>
+          <div>
+            <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">เด็ก</label>
+            <input type="text" id="nb-children" value="0">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">โทรศัพท์</label>
+          <input type="tel" id="nb-phone" placeholder="08x-xxx-xxxx">
+        </div>
+        <div>
+          <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">สัญชาติ</label>
+          <input type="text" id="nb-nationality" placeholder="TH / CN / GB ...">
+        </div>
+        <div>
+          <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Special Request</label>
+          <input type="text" id="nb-special" placeholder="High floor, extra pillow...">
+        </div>
+        <button class="btn-primary" onclick="saveNewBooking()">✅ บันทึกการจอง</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:500; align-items:center; justify-content:center;" onclick="this.style.display='none'">
+  <img id="lightboxImg" style="max-width:90%; max-height:90%; border-radius:12px; object-fit:contain;">
+</div>
+
+<script>
+// ==================== CONSTANTS ====================
+const ROOMS = [
+  { id: 1, floor: 2, type: "Deluxe Double" },
+  { id: 2, floor: 2, type: "Deluxe Double" },
+  { id: 3, floor: 2, type: "Superior Double" },
+  { id: 4, floor: 2, type: "Deluxe Twin Bed" },
+  { id: 5, floor: 2, type: "Deluxe Twin Bed" },
+  { id: 6, floor: 2, type: "Deluxe Double" },
+  { id: 7, floor: 3, type: "Deluxe Double" },
+  { id: 8, floor: 3, type: "Deluxe Double" },
+  { id: 9, floor: 3, type: "Superior Double" },
+  { id: 10, floor: 3, type: "Deluxe Twin Bed" },
+  { id: 11, floor: 3, type: "Deluxe Twin Bed" },
+  { id: 12, floor: 3, type: "Deluxe Double" },
+  { id: 13, floor: 3, type: "Honeymoon Suite", balcony: true, cityView: true },
+];
+
+// ==================== STATE ====================
+let currentGuestFilter = 'all';
+let pendingImportData = null;
+const memoryStore = {};
+
+function readStorage(key, fallbackJson) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ?? fallbackJson;
+  } catch (e) {
+    return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : fallbackJson;
+  }
+}
+
+function writeStorage(key, value) {
+  const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+  try {
+    localStorage.setItem(key, serialized);
+  } catch (e) {
+    memoryStore[key] = serialized;
+  }
+}
+
+function removeStorage(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {}
+  delete memoryStore[key];
+}
+
+// ==================== STORAGE HELPERS ====================
+function dedupeBookingsById(bookings) {
+  const deduped = [];
+  const bookingIndexById = new Map();
+  (Array.isArray(bookings) ? bookings : []).forEach(booking => {
+    if (!booking || typeof booking !== 'object') return;
+    const normalizedId = normalizeBookingId(booking.booking_id);
+    if (!normalizedId) {
+      deduped.push(booking);
+      return;
+    }
+    const normalizedBooking = { ...booking, booking_id: normalizedId };
+    if (bookingIndexById.has(normalizedId)) {
+      deduped[bookingIndexById.get(normalizedId)] = normalizedBooking;
+      return;
+    }
+    bookingIndexById.set(normalizedId, deduped.length);
+    deduped.push(normalizedBooking);
+  });
+  return deduped;
+}
+
+function getBookings() {
+  try {
+    const bookings = JSON.parse(readStorage('lecanal_bookings', '[]'));
+    const deduped = dedupeBookingsById(bookings);
+    let needsWrite = deduped.length !== bookings.length;
+    const hydrated = deduped.map(booking => {
+      if (!booking || typeof booking !== 'object') return booking;
+      const manualLocked = !!booking.manual_room_locked;
+      if (booking.manual_room_locked !== manualLocked || !Object.prototype.hasOwnProperty.call(booking, 'manual_room_locked_at')) {
+        needsWrite = true;
+      }
+      return {
+        ...booking,
+        manual_room_locked: manualLocked,
+        manual_room_locked_at: booking.manual_room_locked_at || null,
+      };
+    });
+    if (needsWrite) writeStorage('lecanal_bookings', hydrated);
+    return hydrated;
+  } catch(e) { return []; }
+}
+function setBookings(b) { writeStorage('lecanal_bookings', dedupeBookingsById(b)); }
+function getCheckins() { try { return JSON.parse(readStorage('lecanal_checkins', '{}')); } catch(e) { return {}; } }
+function setCheckins(c) { writeStorage('lecanal_checkins', c); }
+function getPhotos() { try { return JSON.parse(readStorage('lecanal_photos', '{}')); } catch(e) { return {}; } }
+function setPhotos(p) { writeStorage('lecanal_photos', p); }
+function getTm30Drafts() { try { return JSON.parse(readStorage('lecanal_tm30_drafts', '{}')); } catch(e) { return {}; } }
+function setTm30Drafts(d) { writeStorage('lecanal_tm30_drafts', d); }
+function getHkTasks() { try { return JSON.parse(readStorage('lecanal_hk_tasks', '{}')); } catch(e) { return {}; } }
+function setHkTasks(t) { writeStorage('lecanal_hk_tasks', t); }
+function getNotes() { try { return JSON.parse(readStorage('lecanal_notes', '{}')); } catch(e) { return {}; } }
+function setNotes(n) { writeStorage('lecanal_notes', n); }
+function getRole() { return readStorage('lecanal_role', 'frontdesk'); }
+function getSettingDate() {
+  const d = readStorage('lecanal_date', '');
+  return d || new Date().toISOString().split('T')[0];
+}
+
+// ==================== DATE HELPERS ====================
+function today() { return getSettingDate(); }
+function formatDateTH(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'];
+  const dt = new Date(iso);
+  return `${days[dt.getDay()]} ${parseInt(d)} ${months[parseInt(m)-1]} ${parseInt(y)+543}`;
+}
+function formatShortDate(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${parseInt(d)} ${months[parseInt(m)-1]}`;
+}
+function normalizeDate(str) {
+  if (!str) return '';
+  str = String(str).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) { const [d,m,y] = str.split('/'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; }
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) { const p = str.split('/'); if (parseInt(p[0])>12) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; return `${p[2]}-${p[0].padStart(2,'0')}-${p[1].padStart(2,'0')}`; }
+  // Excel serial date
+  if (/^\d+$/.test(str)) {
+    const d = new Date(Math.round((parseInt(str) - 25569)*86400*1000));
+    return d.toISOString().split('T')[0];
+  }
+  try { const d = new Date(str); if(!isNaN(d)) return d.toISOString().split('T')[0]; } catch(e) {}
+  return str;
+}
+
+// ==================== NAVIGATION ====================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('page-'+page);
+  if (el) { el.classList.add('active'); }
+  const nav = document.getElementById('nav-'+page);
+  if (nav) nav.classList.add('active');
+
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'rooms') renderRooms();
+  if (page === 'guests') renderGuests();
+  if (page === 'housekeeping') renderHousekeeping();
+  if (page === 'settings') initSettings();
+  if (page === 'monthly') renderMonthly();
+  if (page === 'upload') {};
+  updateScheduleShell();
+}
+
+function syncTm30BannerOffset() {
+  const banner = document.getElementById('tm30Banner');
+  const offset = banner && banner.style.display !== 'none' ? `${banner.offsetHeight}px` : '0px';
+  document.documentElement.style.setProperty('--tm30-banner-offset', offset);
+}
+
+function getTm30PendingBookings() {
+  const now = new Date();
+  return getBookings().filter(b => {
+    if (b.status !== 'Checked In' || b.tm30_recorded) return false;
+    if (!b.check_in_time_actual) return false;
+    const diff = (now - new Date(b.check_in_time_actual)) / (1000 * 60 * 60);
+    return diff > 2;
+  });
+}
+
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+  const t = today();
+  document.getElementById('todayDate').textContent = formatDateTH(t);
+  const bookings = getBookings();
+
+  const checkinToday = bookings.filter(b => b.check_in_date === t && b.status !== 'Cancelled' && b.status !== 'No Show');
+  const checkoutToday = bookings.filter(b => b.check_out_date === t && b.status === 'Checked In');
+  const occupied = bookings.filter(b => b.status === 'Checked In').length;
+  const available = 13 - occupied;
+
+  document.getElementById('stat-checkin').textContent = checkinToday.length;
+  document.getElementById('stat-checkout').textContent = checkoutToday.length;
+  document.getElementById('stat-occupied').textContent = occupied;
+  document.getElementById('stat-available').textContent = available;
+
+  // TM30 warning
+  const now = new Date();
+  const tm30Pending = bookings.filter(b => {
+    if (b.status !== 'Checked In' || b.tm30_recorded) return false;
+    if (!b.check_in_time_actual) return false;
+    const diff = (now - new Date(b.check_in_time_actual)) / (1000*60*60);
+    return diff > 2;
+  });
+  const banner = document.getElementById('tm30Banner');
+  if (false && tm30Pending.length > 0) {
+    banner.innerHTML = '<span class="tm30-warning-icon" aria-hidden="true">&#128276;</span><span id="tm30BannerText"></span>';
+    banner.style.display = 'flex';
+    document.getElementById('tm30BannerText').textContent = `TM30 ยังไม่ได้บันทึก ${tm30Pending.length} ราย: ${tm30Pending.map(b=>b.guest_name).join(', ')}`;
+    syncTm30BannerOffset();
+  } else {
+    banner.style.display = 'none';
+    syncTm30BannerOffset();
+  }
+
+  // Check-in list
+  const ciEl = document.getElementById('list-checkin-today');
+  if (checkinToday.length === 0) {
+    ciEl.innerHTML = emptyState('ไม่มี Check-in วันนี้');
+  } else {
+    ciEl.innerHTML = checkinToday.map(b => bookingRowHTML(b, 'checkin')).join('');
+  }
+
+  // Check-out list
+  const coEl = document.getElementById('list-checkout-today');
+  if (checkoutToday.length === 0) {
+    coEl.innerHTML = emptyState('ไม่มี Check-out วันนี้');
+  } else {
+    coEl.innerHTML = checkoutToday.map(b => bookingRowHTML(b, 'checkout')).join('');
+  }
+}
+
+function emptyState(msg) {
+  return `<div style="text-align:center; padding:24px; color:var(--muted); font-size:14px;">${msg}</div>`;
+}
+
+function bookingRowHTML(b, mode) {
+  const room = ROOMS.find(r => r.id === parseInt(b.room_id));
+  const srcClass = b.booking_source === 'Booking.com' ? 'source-booking' : b.booking_source === 'Airbnb' ? 'source-airbnb' : b.booking_source === 'Agoda' ? 'source-agoda' : b.booking_source === 'Walk-in' ? 'source-walkin' : 'source-direct';
+  const statusBadge = getStatusBadge(b.status);
+  const tm30 = (!b.tm30_recorded && b.status === 'Checked In') ? '<span class="badge status-noshow" style="margin-left:4px;">⚠️ TM30</span>' : '';
+  const initials = (b.guest_name || '?').charAt(0).toUpperCase();
+  return `<div class="guest-card" onclick="openGuestModal('${b.booking_id}')">
+    <div class="guest-avatar">${initials}</div>
+    <div class="guest-info">
+      <div class="guest-name">${b.guest_name} ${getFlagEmoji(b.nationality||'')}</div>
+      <div class="guest-meta">
+        <span style="background:var(--navy);color:var(--primary);padding:1px 7px;border-radius:6px;font-size:11px;font-weight:700;">${b.room_id}</span>
+        <span>${room ? room.type : ''}</span>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
+      <span class="badge source-badge ${srcClass}">${b.booking_source || 'Direct'}</span>
+      ${statusBadge}${tm30}
+    </div>
+  </div>`;
+}
+
+function getStatusBadge(status) {
+  const map = { 'Pending':'status-pending', 'Checked In':'status-checkedin', 'Checked Out':'status-checkedout', 'No Show':'status-noshow', 'Staying':'status-staying' };
+  const cls = map[status] || 'status-pending';
+  return `<span class="badge ${cls}">${status}</span>`;
+}
+
+function getFlagEmoji(code) {
+  if (!code || code.length !== 2) return '';
+  const offset = 127397;
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c=>c.charCodeAt(0)+offset));
+}
+
+const DEFAULT_CHECKIN_CHECKLIST = {
+  passport_taken: false,
+  key_issued: false,
+  tm30_done: false,
+  deposit_collected: false,
+  deposit_amount: '',
+};
+
+function normalizeChecklistRecord(record) {
+  const base = record && typeof record === 'object' ? record : {};
+  return {
+    ...DEFAULT_CHECKIN_CHECKLIST,
+    ...base,
+    deposit_amount: base.deposit_amount != null ? String(base.deposit_amount) : '',
+  };
+}
+
+function escapeHtmlAttr(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+const TM30_PROPERTY_PROFILE = {
+  label: 'Le Canal Boutique House',
+  address: '91 Sripoom Road, Si Phum, Mueang Chiang Mai, Chiang Mai 50200',
+};
+
+const TM30_NATIONALITY_NAMES = {
+  AUS: 'Australia',
+  BEL: 'Belgium',
+  CAN: 'Canada',
+  CHN: 'China',
+  DEU: 'Germany',
+  ESP: 'Spain',
+  FRA: 'France',
+  GBR: 'United Kingdom',
+  HKG: 'Hong Kong',
+  IND: 'India',
+  ITA: 'Italy',
+  JPN: 'Japan',
+  KHM: 'Cambodia',
+  KOR: 'South Korea',
+  LAO: 'Laos',
+  MMR: 'Myanmar',
+  MYS: 'Malaysia',
+  NLD: 'Netherlands',
+  PHL: 'Philippines',
+  RUS: 'Russia',
+  SGP: 'Singapore',
+  THA: 'Thailand',
+  TWN: 'Taiwan',
+  UKR: 'Ukraine',
+  USA: 'United States',
+  VNM: 'Vietnam',
+};
+
+const DEFAULT_TM30_DRAFT = {
+  address_label: TM30_PROPERTY_PROFILE.label,
+  address_text: TM30_PROPERTY_PROFILE.address,
+  inform_status: 'In progress',
+  inform_date: '',
+  check_in_date: '',
+  check_out_date: '',
+  nights: 0,
+  passport_no: '',
+  nationality: '',
+  nationality_code: '',
+  first_name: '',
+  middle_name: '',
+  last_name: '',
+  gender: '',
+  birth_date: '',
+  passport_expiry: '',
+  phone_no: '',
+  raw_text: '',
+  raw_mrz: '',
+  extract_status: 'idle',
+  extract_error: '',
+  extracted_at: '',
+};
+
+let passportOCRWorkerPromise = null;
+
+function formatTM30Date(value) {
+  const str = String(value ?? '').trim();
+  if (!str) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return str;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const [year, month, day] = str.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  return str;
+}
+
+function parseTM30Date(value) {
+  const str = String(value ?? '').trim();
+  if (!str) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const match = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return '';
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+function getTM30Nights(checkInValue, checkOutValue) {
+  const checkInIso = parseTM30Date(checkInValue);
+  const checkOutIso = parseTM30Date(checkOutValue);
+  if (!checkInIso || !checkOutIso) return 0;
+  return Math.max(0, diffIsoDays(checkInIso, checkOutIso));
+}
+
+function formatPassportName(value) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\b[a-z]/g, char => char.toUpperCase());
+}
+
+function formatMRZDate(value, kind) {
+  if (!/^\d{6}$/.test(String(value || ''))) return '';
+  const yy = parseInt(value.slice(0, 2), 10);
+  const mm = parseInt(value.slice(2, 4), 10);
+  const dd = parseInt(value.slice(4, 6), 10);
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return '';
+  const currentYear = new Date().getFullYear();
+  const currentShortYear = currentYear % 100;
+  const futureWindow = (currentShortYear + 20) % 100;
+  const year = kind === 'birth'
+    ? (yy > currentShortYear ? 1900 + yy : 2000 + yy)
+    : (yy <= futureWindow ? 2000 + yy : 1900 + yy);
+  return `${String(dd).padStart(2, '0')}/${String(mm).padStart(2, '0')}/${year}`;
+}
+
+function mapPassportGender(value) {
+  const code = String(value ?? '').trim().toUpperCase();
+  if (code === 'M') return 'Male';
+  if (code === 'F') return 'Female';
+  if (code) return 'Unspecified';
+  return '';
+}
+
+function mapPassportNationality(code, fallback) {
+  const alpha3 = String(code ?? '').trim().toUpperCase();
+  if (TM30_NATIONALITY_NAMES[alpha3]) return TM30_NATIONALITY_NAMES[alpha3];
+  if (fallback) return String(fallback).trim().toUpperCase();
+  return alpha3;
+}
+
+function normalizeMrzLine(line) {
+  return String(line ?? '')
+    .toUpperCase()
+    .replace(/[\u00AB\u2039\u27E8\u300A]/g, '<')
+    .replace(/\s+/g, '')
+    .replace(/[^A-Z0-9<]/g, '');
+}
+
+function findPassportMrzLines(text) {
+  const lines = String(text ?? '')
+    .split(/\r?\n/)
+    .map(normalizeMrzLine)
+    .filter(line => line.length >= 30);
+
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const first = lines[index];
+    const second = lines[index + 1];
+    if (first.startsWith('P<') && second.length >= 30) {
+      return [
+        first.padEnd(44, '<').slice(0, 44),
+        second.padEnd(44, '<').slice(0, 44),
+      ];
+    }
+  }
+
+  const compact = normalizeMrzLine(text);
+  const passportIndex = compact.indexOf('P<');
+  if (passportIndex >= 0 && compact.length >= passportIndex + 88) {
+    return [
+      compact.slice(passportIndex, passportIndex + 44),
+      compact.slice(passportIndex + 44, passportIndex + 88),
+    ];
+  }
+  return null;
+}
+
+function parsePassportMrz(line1, line2, fallbackNationality) {
+  const namesField = line1.slice(5).replace(/<+$/g, '');
+  const nameParts = namesField.split('<<');
+  const surname = formatPassportName(nameParts[0].replace(/<+/g, ' ').trim());
+  const givenNames = (nameParts[1] || '')
+    .split('<')
+    .map(formatPassportName)
+    .filter(Boolean);
+
+  return {
+    passport_no: line2.slice(0, 9).replace(/<+/g, '').trim(),
+    nationality_code: line2.slice(10, 13).replace(/<+/g, '').trim(),
+    nationality: mapPassportNationality(line2.slice(10, 13), fallbackNationality),
+    birth_date: formatMRZDate(line2.slice(13, 19), 'birth'),
+    gender: mapPassportGender(line2.slice(20, 21)),
+    passport_expiry: formatMRZDate(line2.slice(21, 27), 'expiry'),
+    first_name: givenNames[0] || '',
+    middle_name: givenNames.slice(1).join(' '),
+    last_name: surname,
+    raw_mrz: `${line1}\n${line2}`,
+  };
+}
+
+async function loadImageFromSource(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Unable to load passport photo'));
+    image.src = source;
+  });
+}
+
+async function createPassportMrzImage(source) {
+  const image = await loadImageFromSource(source);
+  const cropTop = Math.max(0, Math.floor(image.height * 0.58));
+  const cropHeight = Math.max(1, image.height - cropTop);
+  const targetWidth = Math.min(1800, Math.max(1200, image.width));
+  const scale = targetWidth / image.width;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(image.width * scale);
+  canvas.height = Math.round(cropHeight * scale);
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  context.drawImage(image, 0, cropTop, image.width, cropHeight, 0, 0, canvas.width, canvas.height);
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+  for (let index = 0; index < pixels.length; index += 4) {
+    const gray = (pixels[index] * 0.3) + (pixels[index + 1] * 0.59) + (pixels[index + 2] * 0.11);
+    const tone = gray > 150 ? 255 : 0;
+    pixels[index] = tone;
+    pixels[index + 1] = tone;
+    pixels[index + 2] = tone;
+  }
+  context.putImageData(imageData, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+
+async function getPassportOCRWorker() {
+  if (!window.Tesseract || typeof window.Tesseract.createWorker !== 'function') {
+    throw new Error('OCR engine is not available');
+  }
+  if (!passportOCRWorkerPromise) {
+    passportOCRWorkerPromise = window.Tesseract.createWorker('eng');
+  }
+  return passportOCRWorkerPromise;
+}
+
+function buildDefaultTM30Draft(booking) {
+  return {
+    ...DEFAULT_TM30_DRAFT,
+    address_label: TM30_PROPERTY_PROFILE.label,
+    address_text: TM30_PROPERTY_PROFILE.address,
+    inform_date: formatTM30Date(today()),
+    check_in_date: formatTM30Date(booking.check_in_date),
+    check_out_date: formatTM30Date(booking.check_out_date),
+    nights: getTM30Nights(booking.check_in_date, booking.check_out_date),
+    nationality: String(booking.nationality || '').trim().toUpperCase(),
+    phone_no: booking.phone || '',
+  };
+}
+
+function normalizeTM30Draft(booking, draft) {
+  const base = buildDefaultTM30Draft(booking);
+  const source = draft && typeof draft === 'object' ? draft : {};
+  const next = {
+    ...base,
+    ...source,
+  };
+  next.inform_date = formatTM30Date(next.inform_date || base.inform_date);
+  next.check_in_date = formatTM30Date(next.check_in_date || base.check_in_date);
+  next.check_out_date = formatTM30Date(next.check_out_date || base.check_out_date);
+  next.birth_date = formatTM30Date(next.birth_date);
+  next.nights = Number.isFinite(Number(next.nights)) ? Math.max(0, Number(next.nights)) : getTM30Nights(next.check_in_date, next.check_out_date);
+  next.passport_no = String(next.passport_no || '').trim().toUpperCase();
+  next.nationality = String(next.nationality || '').trim();
+  next.nationality_code = String(next.nationality_code || '').trim().toUpperCase();
+  next.first_name = String(next.first_name || '').trim();
+  next.middle_name = String(next.middle_name || '').trim();
+  next.last_name = String(next.last_name || '').trim();
+  next.gender = String(next.gender || '').trim();
+  next.phone_no = String(next.phone_no || '').trim();
+  next.raw_text = String(next.raw_text || '');
+  next.raw_mrz = String(next.raw_mrz || '');
+  next.extract_status = ['idle', 'processing', 'done', 'error'].includes(next.extract_status) ? next.extract_status : 'idle';
+  next.extract_error = String(next.extract_error || '').trim();
+  next.extracted_at = String(next.extracted_at || '').trim();
+  return next;
+}
+
+function getTM30Draft(booking) {
+  const drafts = getTm30Drafts();
+  return normalizeTM30Draft(booking, drafts[booking.booking_id]);
+}
+
+function saveTM30Draft(booking, patch) {
+  const drafts = getTm30Drafts();
+  drafts[booking.booking_id] = normalizeTM30Draft(booking, {
+    ...(drafts[booking.booking_id] || {}),
+    ...(patch || {}),
+  });
+  setTm30Drafts(drafts);
+  return drafts[booking.booking_id];
+}
+
+function updateTM30Field(bookingId, field, value) {
+  const booking = getBookings().find(item => item.booking_id === bookingId);
+  if (!booking) return;
+  const nextValue = String(value ?? '').trim();
+  const patch = { [field]: nextValue };
+  if (['inform_date', 'check_in_date', 'check_out_date', 'birth_date'].includes(field)) {
+    patch[field] = formatTM30Date(nextValue);
+  }
+  const draft = saveTM30Draft(booking, patch);
+  if (field === 'check_in_date' || field === 'check_out_date') {
+    const nights = getTM30Nights(draft.check_in_date, draft.check_out_date);
+    saveTM30Draft(booking, { nights });
+    const nightsInput = document.getElementById(`tm30-nights-${bookingId}`);
+    if (nightsInput) nightsInput.value = String(nights);
+  }
+}
+
+async function extractPassportDataFromPhoto(bookingId) {
+  const booking = getBookings().find(item => item.booking_id === bookingId);
+  if (!booking) return;
+
+  const currentDraft = getTM30Draft(booking);
+  if (currentDraft.extract_status === 'processing') return;
+
+  const photo = getPhotos()[bookingId];
+  if (!photo) {
+    showToast('ถ่ายรูป Passport ก่อน');
+    return;
+  }
+
+  saveTM30Draft(booking, { extract_status: 'processing', extract_error: '' });
+  openGuestModal(bookingId);
+
+  try {
+    const worker = await getPassportOCRWorker();
+    const mrzImage = await createPassportMrzImage(photo);
+    await worker.setParameters({
+      tessedit_pageseg_mode: '6',
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ<0123456789',
+      preserve_interword_spaces: '0',
+    });
+    const result = await worker.recognize(mrzImage);
+    const rawText = String(result?.data?.text || '').trim();
+    const mrzLines = findPassportMrzLines(rawText);
+    if (!mrzLines) {
+      throw new Error('ไม่พบ MRZ จากภาพ Passport');
+    }
+    const extracted = parsePassportMrz(mrzLines[0], mrzLines[1], booking.nationality);
+    saveTM30Draft(booking, {
+      ...extracted,
+      raw_text: rawText,
+      extract_status: 'done',
+      extract_error: '',
+      extracted_at: new Date().toISOString(),
+    });
+
+    const checkins = getCheckins();
+    checkins[bookingId] = normalizeChecklistRecord(checkins[bookingId]);
+    if (!checkins[bookingId].passport_taken) {
+      checkins[bookingId].passport_taken = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+      setCheckins(checkins);
+    }
+    showToast('อ่านข้อมูล Passport แล้ว');
+  } catch (error) {
+    saveTM30Draft(booking, {
+      extract_status: 'error',
+      extract_error: error?.message || 'อ่านข้อมูล Passport ไม่สำเร็จ',
+    });
+    showToast('อ่านข้อมูล Passport ไม่สำเร็จ');
+  }
+
+  openGuestModal(bookingId);
+}
+
+function getTM30StatusMeta(draft, hasPhoto) {
+  if (draft.extract_status === 'processing') {
+    return { label: 'กำลังอ่าน Passport', bg: '#DBEAFE', color: '#1D4ED8' };
+  }
+  if (draft.extract_status === 'done' && draft.passport_no) {
+    return { label: 'Passport data extracted', bg: '#DCFCE7', color: '#166534' };
+  }
+  if (draft.extract_status === 'error') {
+    return { label: draft.extract_error || 'อ่าน Passport ไม่สำเร็จ', bg: '#FEE2E2', color: '#991B1B' };
+  }
+  if (!hasPhoto) {
+    return { label: 'ยังไม่มีรูป Passport', bg: '#F3F4F6', color: 'var(--muted)' };
+  }
+  return { label: 'พร้อมดึงข้อมูลจาก Passport', bg: '#FEF3C7', color: '#92400E' };
+}
+
+function renderTM30DraftCard(booking, draft, hasPhoto) {
+  const status = getTM30StatusMeta(draft, hasPhoto);
+  const extractButton = hasPhoto
+    ? `<button onclick="extractPassportDataFromPhoto('${booking.booking_id}')" ${draft.extract_status === 'processing' ? 'disabled' : ''} style="background:${draft.extract_status === 'processing' ? '#CBD5E1' : 'var(--navy)'};color:${draft.extract_status === 'processing' ? '#475569' : 'white'};padding:8px 12px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:${draft.extract_status === 'processing' ? 'default' : 'pointer'};">${draft.extract_status === 'processing' ? 'กำลังอ่าน...' : '🛂 Extract Passport'}</button>`
+    : '';
+  const expiryHint = draft.passport_expiry ? `<div style="font-size:11px;color:var(--muted);margin-top:6px;">Passport expiry ${draft.passport_expiry}</div>` : '';
+  const mrzHint = draft.raw_mrz
+    ? `<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#F8FAFC;border:1px dashed #D6DEE8;font-size:11px;color:var(--muted);white-space:pre-wrap;">${escapeHtml(draft.raw_mrz)}</div>`
+    : '';
+
+  return `<div class="card" style="padding:14px; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; margin-bottom:10px; flex-wrap:wrap;">
+      <div>
+        <div style="font-weight:700; color:var(--navy); font-size:14px;">📋 TM30 Draft</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:4px;">ถ่ายรูป Passport แล้วระบบจะอ่าน MRZ มาเติมข้อมูลหลักให้ก่อน</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <div style="padding:6px 10px; border-radius:999px; background:${status.bg}; color:${status.color}; font-size:11px; font-weight:700;">${escapeHtml(status.label)}</div>
+        ${extractButton}
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px 12px;">
+      <div style="grid-column:1/-1;">
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Property / Address</label>
+        <div style="padding:10px 12px; border:1px solid #D6DEE8; border-radius:10px; background:#F8FAFC;">
+          <div style="font-weight:700; color:var(--navy);">${escapeHtml(draft.address_label)}</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:4px;">${escapeHtml(draft.address_text)}</div>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Inform Status</label>
+        <select onchange="updateTM30Field('${booking.booking_id}', 'inform_status', this.value)" style="width:100%;">
+          <option value="In progress" ${draft.inform_status === 'In progress' ? 'selected' : ''}>In progress</option>
+          <option value="Ready to submit" ${draft.inform_status === 'Ready to submit' ? 'selected' : ''}>Ready to submit</option>
+          <option value="Submitted" ${draft.inform_status === 'Submitted' ? 'selected' : ''}>Submitted</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Inform Date</label>
+        <input type="text" value="${escapeHtmlAttr(draft.inform_date)}" placeholder="DD/MM/YYYY" onchange="updateTM30Field('${booking.booking_id}', 'inform_date', this.value)">
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Check-in Date</label>
+        <input id="tm30-check-in-${booking.booking_id}" type="text" value="${escapeHtmlAttr(draft.check_in_date)}" placeholder="DD/MM/YYYY" onchange="updateTM30Field('${booking.booking_id}', 'check_in_date', this.value)">
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Check-out Date</label>
+        <input id="tm30-check-out-${booking.booking_id}" type="text" value="${escapeHtmlAttr(draft.check_out_date)}" placeholder="DD/MM/YYYY" onchange="updateTM30Field('${booking.booking_id}', 'check_out_date', this.value)">
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Night(s)</label>
+        <input id="tm30-nights-${booking.booking_id}" type="text" value="${escapeHtmlAttr(draft.nights)}" readonly style="background:#F8FAFC;">
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Passport No.</label>
+        <input type="text" value="${escapeHtmlAttr(draft.passport_no)}" onchange="updateTM30Field('${booking.booking_id}', 'passport_no', this.value)">
+        ${expiryHint}
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Nationality</label>
+        <input type="text" value="${escapeHtmlAttr(draft.nationality)}" onchange="updateTM30Field('${booking.booking_id}', 'nationality', this.value)">
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">First Name</label>
+        <input type="text" value="${escapeHtmlAttr(draft.first_name)}" onchange="updateTM30Field('${booking.booking_id}', 'first_name', this.value)">
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Middle Name</label>
+        <input type="text" value="${escapeHtmlAttr(draft.middle_name)}" onchange="updateTM30Field('${booking.booking_id}', 'middle_name', this.value)">
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Last Name</label>
+        <input type="text" value="${escapeHtmlAttr(draft.last_name)}" onchange="updateTM30Field('${booking.booking_id}', 'last_name', this.value)">
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Gender</label>
+        <select onchange="updateTM30Field('${booking.booking_id}', 'gender', this.value)" style="width:100%;">
+          <option value="" ${!draft.gender ? 'selected' : ''}>Select</option>
+          <option value="Male" ${draft.gender === 'Male' ? 'selected' : ''}>Male</option>
+          <option value="Female" ${draft.gender === 'Female' ? 'selected' : ''}>Female</option>
+          <option value="Unspecified" ${draft.gender === 'Unspecified' ? 'selected' : ''}>Unspecified</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Birth Date</label>
+        <input type="text" value="${escapeHtmlAttr(draft.birth_date)}" placeholder="DD/MM/YYYY" onchange="updateTM30Field('${booking.booking_id}', 'birth_date', this.value)">
+      </div>
+      <div>
+        <label style="font-size:12px; color:var(--muted); font-weight:600; display:block; margin-bottom:4px;">Phone No.</label>
+        <input type="text" value="${escapeHtmlAttr(draft.phone_no)}" onchange="updateTM30Field('${booking.booking_id}', 'phone_no', this.value)">
+      </div>
+    </div>
+    ${mrzHint}
+  </div>`;
+}
+
+function isChecklistItemDone(value) {
+  return typeof value === 'string' ? value.trim().length > 0 : !!value;
+}
+
+function isGuestChecklistComplete(checklist) {
+  return ['passport_taken', 'key_issued', 'tm30_done', 'deposit_collected'].every(key => isChecklistItemDone(checklist[key])) &&
+    String(checklist.deposit_amount || '').trim().length > 0;
+}
+
+function compareDashboardBookings(a, b) {
+  const roomA = parseInt(a.room_id, 10) || 999;
+  const roomB = parseInt(b.room_id, 10) || 999;
+  if (roomA !== roomB) return roomA - roomB;
+  if (a.check_in_date !== b.check_in_date) return String(a.check_in_date).localeCompare(String(b.check_in_date));
+  return String(a.guest_name || '').localeCompare(String(b.guest_name || ''));
+}
+
+function getDashboardSourceClass(source) {
+  if (source === 'Booking.com') return 'source-booking';
+  if (source === 'Airbnb') return 'source-airbnb';
+  if (source === 'Agoda') return 'source-agoda';
+  if (source === 'Walk-in') return 'source-walkin';
+  return 'source-direct';
+}
+
+function getDashboardRoomMeta(booking) {
+  const room = getRoomById(booking.room_id);
+  const roomLabel = room ? `Room ${room.id}` : 'Unassigned room';
+  const roomType = room ? getRoomTypeCompact(room.type) : (booking.room_type || 'No room type');
+  return `${roomLabel} | ${roomType}`;
+}
+
+function renderDashboardCollection(items, emptyMessage) {
+  if (!items.length) return `<div class="dashboard-empty">${emptyMessage}</div>`;
+  return `<div class="dashboard-stream">${items.slice(0, 8).map(renderDashboardItem).join('')}</div>`;
+}
+
+function renderDashboardItem(item) {
+  const clickableClass = item.onclick ? ' dashboard-item-clickable' : '';
+  const clickAttr = item.onclick ? ` onclick="${item.onclick}"` : '';
+  const pillHtml = item.pill ? `<span class="dashboard-pill ${item.pillClass || 'dashboard-pill-neutral'}">${item.pill}</span>` : '';
+  const buttonHtml = item.buttonLabel ? `<button class="${item.buttonClass || 'dashboard-mini-btn'}" onclick="event.stopPropagation();${item.buttonAction}">${item.buttonLabel}</button>` : '';
+  const badgeHtml = item.badge ? `<span class="source-badge ${getDashboardSourceClass(item.badge)}">${item.badge}</span>` : '';
+  return `<div class="dashboard-item${clickableClass}"${clickAttr}>
+    <div class="dashboard-item-icon${item.iconClass ? ` ${item.iconClass}` : ''}">${item.icon || '*'}</div>
+    <div class="dashboard-item-body">
+      <div class="dashboard-item-title">${item.title}</div>
+      <div class="dashboard-item-meta">${item.meta || ''}</div>
+    </div>
+    ${(pillHtml || badgeHtml || buttonHtml) ? `<div class="dashboard-item-side">${pillHtml}${badgeHtml}${buttonHtml}</div>` : ''}
+  </div>`;
+}
+
+function getDashboardActionItems(pendingArrivals, checkoutToday, tm30Pending) {
+  const items = [];
+  pendingArrivals.forEach(booking => {
+    items.push({
+      priority: 10,
+      icon: 'IN',
+      iconClass: 'dashboard-item-icon-success',
+      title: booking.guest_name,
+      meta: `${getDashboardRoomMeta(booking)} | ${booking.booking_source || 'Direct'}`,
+      pill: 'Arrival today',
+      pillClass: 'dashboard-pill-arrival',
+      buttonLabel: 'Check-in',
+      buttonAction: `updateStatus('${booking.booking_id}','Checked In')`,
+      onclick: `openGuestModal('${booking.booking_id}')`,
+    });
+  });
+  checkoutToday.forEach(booking => {
+    items.push({
+      priority: 20,
+      icon: 'OUT',
+      iconClass: 'dashboard-item-icon-warn',
+      title: booking.guest_name,
+      meta: `${getDashboardRoomMeta(booking)} | Departure today`,
+      pill: 'Departure',
+      pillClass: 'dashboard-pill-departure',
+      buttonLabel: 'Check-out',
+      buttonClass: 'dashboard-mini-btn dashboard-mini-btn-secondary',
+      buttonAction: `updateStatus('${booking.booking_id}','Checked Out')`,
+      onclick: `openGuestModal('${booking.booking_id}')`,
+    });
+  });
+  tm30Pending.forEach(booking => {
+    items.push({
+      priority: 30,
+      icon: 'TM',
+      iconClass: 'dashboard-item-icon-alert',
+      title: booking.guest_name,
+      meta: `${getDashboardRoomMeta(booking)} | TM30 still pending`,
+      pill: 'TM30',
+      pillClass: 'dashboard-pill-alert',
+      buttonLabel: 'Record',
+      buttonClass: 'dashboard-mini-btn dashboard-mini-btn-ghost',
+      buttonAction: `markTM30('${booking.booking_id}')`,
+      onclick: `openGuestModal('${booking.booking_id}')`,
+    });
+  });
+  return items.sort((a, b) => a.priority - b.priority || a.title.localeCompare(b.title));
+}
+
+function getDashboardRoomConflicts(bookings) {
+  const active = bookings
+    .filter(booking => booking.status !== 'Cancelled' && booking.status !== 'No Show' && booking.room_id)
+    .sort((a, b) => compareDashboardBookings(a, b));
+  const byRoom = new Map();
+  active.forEach(booking => {
+    const roomId = parseInt(booking.room_id, 10);
+    if (!roomId) return;
+    if (!byRoom.has(roomId)) byRoom.set(roomId, []);
+    byRoom.get(roomId).push(booking);
+  });
+
+  const conflicts = [];
+  byRoom.forEach((roomBookings, roomId) => {
+    for (let i = 0; i < roomBookings.length; i++) {
+      for (let j = i + 1; j < roomBookings.length; j++) {
+        if (!rangesOverlap(roomBookings[i].check_in_date, roomBookings[i].check_out_date, roomBookings[j].check_in_date, roomBookings[j].check_out_date)) continue;
+        conflicts.push({ roomId, bookings: [roomBookings[i], roomBookings[j]] });
+      }
+    }
+  });
+  return conflicts;
+}
+
+function getDashboardAlertItems(bookings, hkTasks, t, tm30Pending) {
+  const alerts = [];
+  tm30Pending.forEach(booking => {
+    alerts.push({
+      icon: 'TM',
+      iconClass: 'dashboard-item-icon-alert',
+      title: `${booking.guest_name} needs TM30`,
+      meta: `${getDashboardRoomMeta(booking)} | Checked in more than 2 hours ago`,
+      pill: 'Urgent',
+      pillClass: 'dashboard-pill-alert',
+      buttonLabel: 'Record',
+      buttonClass: 'dashboard-mini-btn dashboard-mini-btn-secondary',
+      buttonAction: `markTM30('${booking.booking_id}')`,
+      onclick: `openGuestModal('${booking.booking_id}')`,
+    });
+  });
+
+  getDashboardRoomConflicts(bookings).slice(0, 3).forEach(conflict => {
+    alerts.push({
+      icon: 'CF',
+      iconClass: 'dashboard-item-icon-alert',
+      title: `Room ${conflict.roomId} has overlapping bookings`,
+      meta: conflict.bookings.map(booking => `${booking.guest_name} (${formatShortDate(booking.check_in_date)}-${formatShortDate(booking.check_out_date)})`).join(' | '),
+      pill: 'Conflict',
+      pillClass: 'dashboard-pill-alert',
+      onclick: `showPage('monthly')`,
+    });
+  });
+
+  bookings
+    .filter(booking => booking.status !== 'Cancelled' && booking.status !== 'No Show' && (!parseInt(booking.room_id, 10) || !getRoomById(booking.room_id)) && booking.check_out_date > t)
+    .slice(0, 2)
+    .forEach(booking => {
+      alerts.push({
+        icon: 'RM',
+        iconClass: 'dashboard-item-icon-warn',
+        title: `${booking.guest_name} has no valid room`,
+        meta: `${formatShortDate(booking.check_in_date)} - ${formatShortDate(booking.check_out_date)} | Assign a room before arrival`,
+        pill: 'Assign room',
+        pillClass: 'dashboard-pill-warn',
+        onclick: `openGuestModal('${booking.booking_id}')`,
+      });
+    });
+
+  bookings
+    .filter(booking => booking.status === 'No Show' && booking.check_in_date === t)
+    .slice(0, 2)
+    .forEach(booking => {
+      alerts.push({
+        icon: 'NS',
+        iconClass: 'dashboard-item-icon-alert',
+        title: `${booking.guest_name} marked as no-show`,
+        meta: `${getDashboardRoomMeta(booking)} | Review inventory release`,
+        pill: 'No-show',
+        pillClass: 'dashboard-pill-alert',
+        onclick: `openGuestModal('${booking.booking_id}')`,
+      });
+    });
+
+  ROOMS.forEach(room => {
+    const task = hkTasks[`${room.id}-${t}`];
+    if (!task || task.mode !== 'maintenance') return;
+    const impacted = bookings.find(booking =>
+      booking.room_id == room.id &&
+      booking.status !== 'Cancelled' &&
+      booking.status !== 'No Show' &&
+      booking.check_in_date <= addDays(t, 1) &&
+      booking.check_out_date > t
+    );
+    if (!impacted) return;
+    alerts.push({
+      icon: 'MT',
+      iconClass: 'dashboard-item-icon-warn',
+      title: `Maintenance impacts Room ${room.id}`,
+      meta: `${impacted.guest_name} is assigned here. Review room plan.`,
+      pill: 'Maintenance',
+      pillClass: 'dashboard-pill-warn',
+      onclick: `showPage('rooms')`,
+    });
+  });
+
+  return alerts.slice(0, 8);
+}
+
+function getDashboardUpcomingItems(bookings, t) {
+  const horizon = addDays(t, 2);
+  const events = [];
+  bookings
+    .filter(booking => booking.status !== 'Cancelled' && booking.status !== 'No Show')
+    .forEach(booking => {
+      if (booking.check_in_date >= t && booking.check_in_date <= horizon) {
+        events.push({
+          when: booking.check_in_date,
+          priority: 1,
+          icon: 'IN',
+          iconClass: 'dashboard-item-icon-success',
+          title: booking.guest_name,
+          meta: `${getDashboardRelativeDayLabel(booking.check_in_date, t)} | ${getDashboardRoomMeta(booking)} | ${booking.booking_source || 'Direct'}`,
+          pill: 'Arrival',
+          pillClass: 'dashboard-pill-arrival',
+          badge: booking.booking_source || 'Direct',
+          onclick: `openGuestModal('${booking.booking_id}')`,
+        });
+      }
+      if (booking.check_out_date >= t && booking.check_out_date <= horizon && booking.status === 'Checked In') {
+        events.push({
+          when: booking.check_out_date,
+          priority: 2,
+          icon: 'OUT',
+          iconClass: 'dashboard-item-icon-warn',
+          title: booking.guest_name,
+          meta: `${getDashboardRelativeDayLabel(booking.check_out_date, t)} | ${getDashboardRoomMeta(booking)} | Departure planned`,
+          pill: 'Departure',
+          pillClass: 'dashboard-pill-departure',
+          onclick: `openGuestModal('${booking.booking_id}')`,
+        });
+      }
+    });
+
+  return events
+    .sort((a, b) => (a.when === b.when ? a.priority - b.priority : a.when.localeCompare(b.when)))
+    .slice(0, 8);
+}
+
+function getDashboardTurnoverItems(bookings, hkTasks, t) {
+  const turnoverMap = new Map();
+  bookings
+    .filter(booking => booking.check_out_date === t && (booking.status === 'Checked In' || booking.status === 'Checked Out'))
+    .forEach(booking => {
+      const roomId = parseInt(booking.room_id, 10);
+      if (!roomId || turnoverMap.has(roomId)) return;
+      const nextArrival = bookings
+        .filter(item =>
+          item.room_id == roomId &&
+          item.status !== 'Cancelled' &&
+          item.status !== 'No Show' &&
+          item.booking_id !== booking.booking_id &&
+          item.check_in_date >= t
+        )
+        .sort((a, b) => a.check_in_date.localeCompare(b.check_in_date))[0];
+      const hkKey = `${roomId}-${t}`;
+      const hkStatus = hkTasks[hkKey]?.status || 'Pending';
+      const maintenance = hkTasks[hkKey]?.mode === 'maintenance';
+      turnoverMap.set(roomId, {
+        icon: 'HK',
+        iconClass: maintenance ? 'dashboard-item-icon-alert' : 'dashboard-item-icon-warn',
+        title: `Room ${roomId} turnover`,
+        meta: `${booking.guest_name} checks out today${nextArrival ? ` | Next arrival: ${nextArrival.guest_name}` : ' | No next arrival yet'}`,
+        pill: maintenance ? 'Maintenance' : hkStatus,
+        pillClass: maintenance ? 'dashboard-pill-alert' : (hkStatus === 'Done' ? 'dashboard-pill-arrival' : hkStatus === 'In Progress' ? 'dashboard-pill-departure' : 'dashboard-pill-warn'),
+        buttonLabel: 'Open HK',
+        buttonClass: 'dashboard-mini-btn dashboard-mini-btn-ghost',
+        buttonAction: `showPage('housekeeping')`,
+      });
+    });
+  return Array.from(turnoverMap.values());
+}
+
+function getDashboardRelativeDayLabel(iso, todayIso) {
+  if (iso === todayIso) return 'Today';
+  if (iso === addDays(todayIso, 1)) return 'Tomorrow';
+  return formatShortDate(iso);
+}
+
+function renderDashboardAIBox(context) {
+  let headline = 'Operations look steady';
+  let copy = `No urgent alerts. ${context.available} rooms are still available today, with occupancy at ${context.occupancy}%.`;
+  const tags = [
+    `${context.pendingArrivals.length} arrivals`,
+    `${context.checkoutToday.length} departures`,
+    `${context.turnoverItems.length} turnover`,
+  ];
+
+  if (context.alerts.length > 0) {
+    headline = `${context.alerts.length} issues need attention`;
+    copy = context.tm30Pending.length > 0
+      ? `Start with TM30 follow-up for ${context.tm30Pending[0].guest_name}${context.tm30Pending.length > 1 ? ' and other checked-in guests' : ''}, then review room conflicts or maintenance impacts.`
+      : 'Focus on the urgent alerts first, especially room conflicts, unassigned stays, and maintenance impacts.';
+  } else if (context.actions.length > 0) {
+    headline = `${context.actions.length} live tasks on the desk`;
+    copy = context.pendingArrivals.length > 0
+      ? 'Front desk should prioritize incoming arrivals first, then clear departure and TM30 tasks to keep the day smooth.'
+      : 'No red flags yet. Use the live task list to keep arrivals, departures, and room preparation moving.';
+  }
+
+  const tagHtml = tags.map(tag => `<span class="dashboard-pill dashboard-pill-neutral">${tag}</span>`).join('');
+  return `<div class="dashboard-ai-box">
+    <div class="dashboard-ai-headline">${headline}</div>
+    <div class="dashboard-ai-copy">${copy}</div>
+    <div class="dashboard-ai-tags">${tagHtml}</div>
+  </div>`;
+}
+
+function renderDashboard() {
+  const t = today();
+  document.getElementById('todayDate').textContent = formatDateTH(t);
+  const bookings = getBookings();
+  const hkTasks = getHkTasks();
+  const activeBookings = bookings.filter(b => b.status !== 'Cancelled' && b.status !== 'No Show');
+  const checkinToday = activeBookings.filter(b => b.check_in_date === t);
+  const pendingArrivals = checkinToday.filter(b => b.status === 'Pending').sort(compareDashboardBookings);
+  const checkoutToday = bookings.filter(b => b.check_out_date === t && b.status === 'Checked In').sort(compareDashboardBookings);
+  const occupiedRoomIds = new Set(bookings
+    .filter(b => b.status === 'Checked In' && b.check_in_date <= t && b.check_out_date > t)
+    .map(b => String(b.room_id))
+  );
+  const occupied = occupiedRoomIds.size;
+  const available = Math.max(0, ROOMS.length - occupied);
+  const tm30Pending = getTm30PendingBookings();
+  const turnoverItems = getDashboardTurnoverItems(bookings, hkTasks, t);
+  const alertItems = getDashboardAlertItems(bookings, hkTasks, t, tm30Pending);
+  const actionItems = getDashboardActionItems(pendingArrivals, checkoutToday, tm30Pending);
+  const upcomingItems = getDashboardUpcomingItems(bookings, t);
+  const banner = document.getElementById('tm30Banner');
+
+  document.getElementById('stat-checkin').textContent = checkinToday.length;
+  document.getElementById('stat-checkout').textContent = checkoutToday.length;
+  document.getElementById('stat-occupied').textContent = occupied;
+  document.getElementById('stat-available').textContent = available;
+
+  banner.style.display = 'none';
+  syncTm30BannerOffset();
+
+  const occupancy = Math.round((occupied / ROOMS.length) * 100);
+  document.getElementById('dashboardStatusStrip').innerHTML = [
+    { text: `${actionItems.length} live tasks`, cls: '' },
+    { text: `${alertItems.length} alerts`, cls: alertItems.length ? ' dashboard-status-chip-alert' : ' dashboard-status-chip-success' },
+    { text: `${turnoverItems.length} turnover rooms`, cls: turnoverItems.length ? ' dashboard-status-chip-warn' : '' },
+    { text: `${occupancy}% occupied`, cls: '' },
+  ].map(item => `<span class="dashboard-status-chip${item.cls}">${item.text}</span>`).join('');
+
+  document.getElementById('dashboardActionsCount').textContent = actionItems.length;
+  document.getElementById('dashboardAlertsCount').textContent = alertItems.length;
+  document.getElementById('dashboardUpcomingCount').textContent = upcomingItems.length;
+  document.getElementById('dashboardTurnoverCount').textContent = turnoverItems.length;
+
+  document.getElementById('dashboardActionsList').innerHTML = renderDashboardCollection(actionItems, 'No immediate front desk actions. Today looks stable.');
+  document.getElementById('dashboardAlertsList').innerHTML = renderDashboardCollection(alertItems, 'No urgent issues detected right now.');
+  document.getElementById('dashboardUpcomingList').innerHTML = renderDashboardCollection(upcomingItems, 'No arrivals or departures in the next 48 hours.');
+  document.getElementById('dashboardTurnoverList').innerHTML = renderDashboardCollection(turnoverItems, 'No room turnover planned for today.');
+  document.getElementById('dashboardAISnapshot').innerHTML = renderDashboardAIBox({
+    alerts: alertItems,
+    actions: actionItems,
+    tm30Pending,
+    pendingArrivals,
+    checkoutToday,
+    turnoverItems,
+    available,
+    occupancy,
+  });
+}
+
+// ==================== ROOMS ====================
+function renderRooms() {
+  const bookings = getBookings();
+  const t = today();
+  const hkTasks = getHkTasks();
+  let html = '';
+  [2,3].forEach(floor => {
+    html += `<div style="font-weight:700; color:var(--navy); font-size:13px; letter-spacing:0.5px; text-transform:uppercase; margin: 18px 0 10px; opacity:0.7;">ชั้น ${floor}</div>`;
+    html += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">';
+    ROOMS.filter(r => r.floor === floor).forEach(room => {
+      const occupied = bookings.find(b => b.room_id == room.id && b.status === 'Checked In');
+      const checkingIn = bookings.find(b => b.room_id == room.id && b.check_in_date === t && b.status === 'Pending');
+      const checkingOut = bookings.find(b => b.room_id == room.id && b.check_out_date === t && b.status === 'Checked In');
+      const hkKey = `${room.id}-${t}`;
+      const maintenance = hkTasks[hkKey]?.mode === 'maintenance';
+      let cls = 'room-card room-available';
+      let status = '🟢 ว่าง';
+      if (maintenance)    { cls = 'room-card room-maintenance'; status = '⚙️ Maint.'; }
+      else if (checkingOut) { cls = 'room-card room-checkout';   status = '🟡 Check-out'; }
+      else if (occupied)    { cls = 'room-card room-occupied';   status = '● Occupied'; }
+      else if (checkingIn)  { cls = 'room-card room-checkin';    status = '🔵 Check-in'; }
+
+      const booking = checkingOut || occupied || checkingIn;
+      html += `<div class="${cls}" onclick="handleRoomTap(${room.id})">
+        <div class="room-status-dot"></div>
+        ${room.balcony ? '<span style="font-size:12px;position:absolute;top:6px;left:8px;">🏛️</span>' : ''}
+        <div class="room-number">${room.id}</div>
+        <div class="room-type-label">${room.type}</div>
+        <div style="margin-top:7px;font-size:10px;font-weight:600;opacity:0.8;">${status}</div>
+        ${booking ? `<div style="font-size:10px;margin-top:3px;opacity:0.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${booking.guest_name}</div>` : ''}
+      </div>`;
+    });
+    html += '</div>';
+  });
+  document.getElementById('room-grid').innerHTML = html;
+}
+
+function handleRoomTap(roomId) {
+  const bookings = getBookings();
+  const t = today();
+  const booking = bookings.find(b => b.room_id == roomId && (b.status === 'Checked In' || (b.check_in_date === t && b.status === 'Pending')));
+  if (booking) {
+    openGuestModal(booking.booking_id);
+  } else {
+    const hkTasks = getHkTasks();
+    const hkKey = `${roomId}-${t}`;
+    const sheet = `<div style="padding:0 16px 24px;">
+      <div class="font-serif" style="font-size:18px; color:var(--navy); margin-bottom:16px;">ห้อง ${roomId}</div>
+      <button class="btn-primary" style="margin-bottom:8px;" onclick="markMaintenance(${roomId}); closeAllModals();">⚙️ Maintenance</button>
+      <button class="btn-outline" onclick="quickWalkIn(${roomId}); closeAllModals();" style="width:100%;">🚶 Walk-in Check-in</button>
+    </div>`;
+    showBottomSheet(sheet);
+  }
+}
+
+function markMaintenance(roomId) {
+  const t = today();
+  const hkTasks = getHkTasks();
+  const key = `${roomId}-${t}`;
+  hkTasks[key] = { ...(hkTasks[key]||{}), mode: 'maintenance' };
+  setHkTasks(hkTasks);
+  showToast(`ห้อง ${roomId} — Maintenance`);
+  renderRooms();
+  renderGuests();
+  renderHousekeeping();
+  renderMonthly();
+}
+
+function quickWalkIn(roomId) {
+  openNewBookingModal(roomId);
+}
+
+// ==================== GUESTS ====================
+function setGuestFilter(f, el) {
+  currentGuestFilter = f;
+  document.querySelectorAll('#guest-filters .filter-chip').forEach(c=>c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderGuests();
+}
+
+function renderGuests() {
+  const bookings = getBookings();
+  const t = today();
+  const q = (document.getElementById('guestSearch')?.value||'').toLowerCase();
+  let filtered = bookings.filter(b => b.status !== 'Cancelled');
+  
+  if (currentGuestFilter === 'checkin_today') filtered = filtered.filter(b=>b.check_in_date===t);
+  else if (currentGuestFilter === 'checkout_today') filtered = filtered.filter(b=>b.check_out_date===t&&b.status==='Checked In');
+  else if (currentGuestFilter === 'staying') filtered = filtered.filter(b=>b.status==='Checked In');
+  else if (currentGuestFilter === 'upcoming') filtered = filtered.filter(b=>b.check_in_date>t&&b.status==='Pending');
+  
+  if (q) {
+    filtered = filtered.filter(b =>
+      b.guest_name.toLowerCase().includes(q) ||
+      String(b.room_id).includes(q) ||
+      b.booking_id.toLowerCase().includes(q)
+    );
+  }
+  
+  filtered.sort((a,b) => (a.check_in_date > b.check_in_date) ? 1 : -1);
+  
+  const el = document.getElementById('guest-list');
+  if (filtered.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">ไม่พบข้อมูล</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(b => {
+    const tm30Badge = (!b.tm30_recorded && b.status === 'Checked In') ? '<span class="badge status-noshow">⚠️ TM30</span>' : (b.tm30_recorded ? '<span class="badge status-checkedin">✅ TM30</span>' : '');
+    const srcClass = b.booking_source === 'Booking.com' ? 'source-booking' : b.booking_source === 'Airbnb' ? 'source-airbnb' : b.booking_source === 'Agoda' ? 'source-agoda' : b.booking_source === 'Walk-in' ? 'source-walkin' : 'source-direct';
+    const initials = (b.guest_name || '?').charAt(0).toUpperCase();
+    return `<div class="guest-card" onclick="openGuestModal('${b.booking_id}')">
+      <div class="guest-avatar">${initials}</div>
+      <div class="guest-info">
+        <div class="guest-name">${b.guest_name} ${getFlagEmoji(b.nationality||'')}</div>
+        <div class="guest-meta">
+          <span style="background:var(--navy);color:var(--primary);padding:1px 7px;border-radius:6px;font-size:11px;font-weight:700;">${b.room_id}</span>
+          ${formatShortDate(b.check_in_date)} → ${formatShortDate(b.check_out_date)}
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;">${getStatusBadge(b.status)}${tm30Badge}</div>
+      </div>
+      <span class="badge source-badge ${srcClass}" style="flex-shrink:0;align-self:flex-start;">${b.booking_source||'Direct'}</span>
+    </div>`;
+  }).join('');
+}
+
+// ==================== GUEST MODAL ====================
+function openGuestModal(bookingId) {
+  const bookings = getBookings();
+  const b = bookings.find(bk=>bk.booking_id===bookingId);
+  if (!b) return;
+  
+  const checkins = getCheckins();
+  const checklist = normalizeChecklistRecord(checkins[bookingId]);
+  const notes = getNotes();
+  const photos = getPhotos();
+  const role = getRole();
+  
+  const room = ROOMS.find(r=>r.id===parseInt(b.room_id));
+  const allChecked = isGuestChecklistComplete(checklist);
+  
+  let html = `
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+    <div>
+      <div class="font-serif" style="font-size:22px; color:var(--navy);">${b.guest_name}</div>
+      <div style="font-size:13px; color:var(--muted);">ห้อง ${b.room_id} · ${room?room.type:''} ${getFlagEmoji(b.nationality||'')}</div>
+    </div>
+    <div>
+      ${getStatusBadge(b.status)}
+    </div>
+  </div>`;
+
+  // Status action buttons
+  if (role === 'frontdesk') {
+    html += `<div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">`;
+    if (b.status === 'Pending') html += `<button onclick="updateStatus('${b.booking_id}','Checked In')" style="background:var(--green);color:white;padding:8px 14px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;">✅ Check-in</button>`;
+    if (b.status === 'Checked In') html += `<button onclick="updateStatus('${b.booking_id}','Checked Out')" style="background:var(--red);color:white;padding:8px 14px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;">🚪 Check-out</button>`;
+    if (b.status === 'Pending') html += `<button onclick="updateStatus('${b.booking_id}','No Show')" style="background:#FEE2E2;color:#991B1B;padding:8px 14px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;">❌ No Show</button>`;
+    if (!b.tm30_recorded && b.status==='Checked In') html += `<button onclick="markTM30('${b.booking_id}')" style="background:#FEF3C7;color:#92400E;padding:8px 14px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;">📋 TM30 Done</button>`;
+    html += `</div>`;
+  }
+
+  // Booking info
+  html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+    <div style="font-weight:700; color:var(--navy); margin-bottom:10px; font-size:14px;">📋 ข้อมูลการจอง</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px;">
+      <div><span style="color:var(--muted);">Booking ID</span><br><strong>${b.booking_id}</strong></div>
+      <div><span style="color:var(--muted);">แหล่งจอง</span><br><strong>${b.booking_source||'-'}</strong></div>
+      <div><span style="color:var(--muted);">Check-in</span><br><strong>${formatShortDate(b.check_in_date)}</strong></div>
+      <div><span style="color:var(--muted);">Check-out</span><br><strong>${formatShortDate(b.check_out_date)}</strong></div>
+      <div><span style="color:var(--muted);">ผู้ใหญ่</span><br><strong>${b.num_adults||1}</strong></div>
+      <div><span style="color:var(--muted);">เด็ก</span><br><strong>${b.num_children||0}</strong></div>
+      ${b.special_requests ? `<div style="grid-column:1/-1"><span style="color:var(--muted);">Special Request</span><br><strong>${b.special_requests}</strong></div>` : ''}
+    </div>
+  </div>`;
+
+  if (role === 'frontdesk') {
+    // Guest info
+    html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; color:var(--navy); margin-bottom:10px; font-size:14px;">👤 ข้อมูลแขก</div>
+      <div style="font-size:13px; display:flex; flex-direction:column; gap:6px;">
+        ${b.phone ? `<div>📱 ${b.phone}</div>` : ''}
+        ${b.email ? `<div>✉️ ${b.email}</div>` : ''}
+        ${b.nationality ? `<div>🌍 ${b.nationality} ${getFlagEmoji(b.nationality)}</div>` : ''}
+      </div>
+    </div>`;
+
+    // Photo
+    const photo = photos[bookingId];
+    html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-weight:700; color:var(--navy); font-size:14px;">📷 Passport Photo</div>
+        <label style="background:var(--navy);color:var(--gold);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+          ${photo ? '🔄 ถ่ายใหม่' : '📷 ถ่าย'}
+          <input type="file" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoCapture(event,'${bookingId}')">
+        </label>
+      </div>
+      ${photo ? `<img src="${photo}" class="photo-thumb" onclick="document.getElementById('lightboxImg').src='${photo}'; document.getElementById('lightbox').style.display='flex'">` : '<div style="font-size:13px; color:var(--muted);">ยังไม่มีรูปถ่าย</div>'}
+    </div>`;
+
+    // Check-in Checklist
+    const checkItems = [
+      { key:'passport_taken', label:'Passport / ID ถ่ายรูปแล้ว', icon:'🛂' },
+      { key:'key_issued', label:'ออก Key Card แล้ว', icon:'🔑' },
+      { key:'room_explained', label:'อธิบายห้องพัก / WiFi แล้ว', icon:'🏨' },
+      { key:'tm30_done', label:'TM30 บันทึกแล้ว', icon:'📋' },
+      { key:'deposit_collected', label:'รับ Deposit แล้ว (ถ้ามี)', icon:'💰' },
+    ];
+    html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; color:var(--navy); margin-bottom:4px; font-size:14px;">✅ Checklist</div>
+      ${allChecked ? '<div style="background:#DCFCE7;color:#166534;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:8px;">✅ Check-in สมบูรณ์</div>' : ''}
+      ${checkItems.map(item => {
+        const checked = !!checklist[item.key];
+        const ts = typeof checklist[item.key] === 'string' ? checklist[item.key] : '';
+        return `<div class="checklist-item">
+          <div class="check-circle ${checked?'checked':''}" onclick="toggleChecklist('${bookingId}','${item.key}')">${checked?'✓':''}</div>
+          <div style="flex:1;">
+            <div style="font-size:14px; ${checked?'text-decoration:line-through;color:var(--muted)':''}">${item.icon} ${item.label}</div>
+            ${ts ? `<div style="font-size:11px;color:var(--muted);">${ts}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Housekeeping task
+  const hkTasks = getHkTasks();
+  const hkKey = `${b.room_id}-${today()}`;
+  let taskType='', taskBg='', taskLabel='';
+  if (b.status === 'Pending' && b.check_in_date === today()) { taskType='new'; taskBg='#DBEAFE'; taskLabel='🛏️ Prepare Room — Full Setup'; }
+  else if (b.status === 'Checked In') { taskType='stayover'; taskBg='#FEF3C7'; taskLabel='🔄 Daily Clean — Stay-over'; }
+  else if (b.status === 'Checked Out') { taskType='checkout'; taskBg='#FEE2E2'; taskLabel='🧽 Deep Clean + Reset'; }
+  
+  if (taskLabel) {
+    const hkState = hkTasks[hkKey]?.status || 'Pending';
+    html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; color:var(--navy); margin-bottom:10px; font-size:14px;">🧹 Housekeeping</div>
+      <div style="background:${taskBg}; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-weight:600; font-size:14px;">${taskLabel}</div>
+      <div style="display:flex; gap:6px;">
+        ${['Pending','In Progress','Done'].map(s => `<button onclick="updateHkStatus('${b.room_id}','${s}')" style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:${hkState===s?'var(--navy)':'#F3F4F6'};color:${hkState===s?'white':'var(--text)'};">${s}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Notes
+  const note = notes[bookingId] || '';
+  html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+    <div style="font-weight:700; color:var(--navy); margin-bottom:10px; font-size:14px;">📝 Notes</div>
+    <textarea id="noteArea-${bookingId}" rows="3" placeholder="บันทึกภายใน..." style="resize:none;">${note}</textarea>
+    <button onclick="saveNote('${bookingId}')" style="margin-top:8px; background:var(--navy); color:white; padding:8px 16px; border-radius:8px; border:none; font-size:13px; cursor:pointer;">บันทึก</button>
+  </div>`;
+
+  document.getElementById('guestModalBody').innerHTML = html;
+  document.getElementById('guestModal').classList.add('open');
+}
+
+function handleModalClick(e) {
+  if (e.target === document.getElementById('guestModal')) closeAllModals();
+}
+function handleNewBookingModalClick(e) {
+  if (e.target === document.getElementById('newBookingModal')) document.getElementById('newBookingModal').classList.remove('open');
+}
+function closeAllModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));
+}
+
+let bottomSheetEl = null;
+function showBottomSheet(html) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `<div class="modal-sheet"><div class="drag-handle"></div>${html}</div>`;
+  overlay.onclick = (e) => { if(e.target===overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+// ==================== ACTIONS ====================
+function updateStatus(bookingId, newStatus) {
+  const bookings = getBookings();
+  const idx = bookings.findIndex(b=>b.booking_id===bookingId);
+  if (idx<0) return;
+  bookings[idx].status = newStatus;
+  if (newStatus === 'Checked In') bookings[idx].check_in_time_actual = new Date().toISOString();
+  if (newStatus === 'Checked Out') bookings[idx].check_out_time_actual = new Date().toISOString();
+  setBookings(bookings);
+  showToast(`${newStatus} — ${bookings[idx].guest_name}`);
+  openGuestModal(bookingId);
+  renderDashboard();
+  renderRooms();
+  renderGuests();
+  renderHousekeeping();
+  renderMonthly();
+}
+
+function markTM30(bookingId) {
+  const bookings = getBookings();
+  const idx = bookings.findIndex(b=>b.booking_id===bookingId);
+  if (idx<0) return;
+  bookings[idx].tm30_recorded = true;
+  bookings[idx].tm30_recorded_at = new Date().toISOString();
+  const checkins = getCheckins();
+  if (!checkins[bookingId]) checkins[bookingId] = {};
+  checkins[bookingId].tm30_done = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  setBookings(bookings);
+  setCheckins(checkins);
+  showToast('✅ TM30 บันทึกแล้ว');
+  openGuestModal(bookingId);
+}
+
+function toggleChecklist(bookingId, key) {
+  const checkins = getCheckins();
+  if (!checkins[bookingId]) checkins[bookingId] = {};
+  const cur = checkins[bookingId][key];
+  checkins[bookingId][key] = cur ? false : new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  if (key === 'tm30_done' && checkins[bookingId][key]) {
+    const bookings = getBookings();
+    const idx = bookings.findIndex(b=>b.booking_id===bookingId);
+    if (idx>=0) { bookings[idx].tm30_recorded = true; setBookings(bookings); }
+  }
+  setCheckins(checkins);
+  openGuestModal(bookingId);
+}
+
+function saveNote(bookingId) {
+  const notes = getNotes();
+  notes[bookingId] = document.getElementById('noteArea-'+bookingId)?.value || '';
+  setNotes(notes);
+  showToast('บันทึก notes แล้ว');
+}
+
+function handlePhotoCapture(event, bookingId) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const photos = getPhotos();
+    photos[bookingId] = e.target.result;
+    setPhotos(photos);
+    const checkins = getCheckins();
+    checkins[bookingId] = normalizeChecklistRecord(checkins[bookingId]);
+    if (!checkins[bookingId].passport_taken) {
+      checkins[bookingId].passport_taken = new Date().toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+      setCheckins(checkins);
+    }
+    const bookings = getBookings();
+    const bookingIndex = bookings.findIndex(item => item.booking_id === bookingId);
+    if (bookingIndex >= 0) {
+      bookings[bookingIndex].passport_photo = true;
+      setBookings(bookings);
+      saveTM30Draft(bookings[bookingIndex], {
+        extract_status: 'idle',
+        extract_error: '',
+      });
+    }
+    showToast('📷 ถ่ายรูปแล้ว กำลังอ่าน Passport');
+    openGuestModal(bookingId);
+    extractPassportDataFromPhoto(bookingId);
+  };
+  reader.readAsDataURL(file);
+}
+
+function markTM30(bookingId) {
+  const bookings = getBookings();
+  const idx = bookings.findIndex(b => b.booking_id === bookingId);
+  if (idx < 0) return;
+  bookings[idx].tm30_recorded = true;
+  bookings[idx].tm30_recorded_at = new Date().toISOString();
+  const checkins = getCheckins();
+  checkins[bookingId] = normalizeChecklistRecord(checkins[bookingId]);
+  checkins[bookingId].tm30_done = new Date().toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+  setBookings(bookings);
+  setCheckins(checkins);
+  showToast('✅ TM30 บันทึกแล้ว');
+  openGuestModal(bookingId);
+}
+
+function toggleChecklist(bookingId, key) {
+  const checkins = getCheckins();
+  checkins[bookingId] = normalizeChecklistRecord(checkins[bookingId]);
+  const current = checkins[bookingId][key];
+  checkins[bookingId][key] = current ? false : new Date().toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+  if (key === 'deposit_collected' && checkins[bookingId][key] && !String(checkins[bookingId].deposit_amount || '').trim()) {
+    checkins[bookingId].deposit_amount = '0';
+  }
+  if (key === 'tm30_done' && checkins[bookingId][key]) {
+    const bookings = getBookings();
+    const idx = bookings.findIndex(b => b.booking_id === bookingId);
+    if (idx >= 0) {
+      bookings[idx].tm30_recorded = true;
+      bookings[idx].tm30_recorded_at = new Date().toISOString();
+      setBookings(bookings);
+    }
+  }
+  setCheckins(checkins);
+  openGuestModal(bookingId);
+}
+
+function updateChecklistAmount(bookingId, value) {
+  const checkins = getCheckins();
+  checkins[bookingId] = normalizeChecklistRecord(checkins[bookingId]);
+  const nextValue = String(value ?? '').trim();
+  checkins[bookingId].deposit_amount = nextValue;
+  if (nextValue && !checkins[bookingId].deposit_collected) {
+    checkins[bookingId].deposit_collected = new Date().toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+  }
+  setCheckins(checkins);
+  openGuestModal(bookingId);
+}
+
+function openGuestModal(bookingId) {
+  const bookings = getBookings();
+  const booking = bookings.find(item => item.booking_id === bookingId);
+  if (!booking) return;
+
+  const checkins = getCheckins();
+  const checklist = normalizeChecklistRecord(checkins[bookingId]);
+  const notes = getNotes();
+  const photos = getPhotos();
+  const role = getRole();
+  const room = ROOMS.find(item => item.id === parseInt(booking.room_id, 10));
+  const allChecked = isGuestChecklistComplete(checklist);
+  const tm30Draft = getTM30Draft(booking);
+
+  let html = `
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+    <div>
+      <div class="font-serif" style="font-size:22px; color:var(--navy);">${booking.guest_name}</div>
+      <div style="font-size:13px; color:var(--muted);">ห้อง ${booking.room_id} | ${room ? room.type : ''} ${getFlagEmoji(booking.nationality || '')}</div>
+    </div>
+    <div>
+      ${getStatusBadge(booking.status)}
+    </div>
+  </div>`;
+
+  if (role === 'frontdesk') {
+    html += `<div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">`;
+    if (booking.status === 'Pending') html += `<button onclick="updateStatus('${booking.booking_id}','Checked In')" style="background:var(--green);color:white;padding:8px 14px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;">✅ Check-in</button>`;
+    if (booking.status === 'Checked In') html += `<button onclick="updateStatus('${booking.booking_id}','Checked Out')" style="background:var(--red);color:white;padding:8px 14px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;">🚪 Check-out</button>`;
+    if (booking.status === 'Pending') html += `<button onclick="updateStatus('${booking.booking_id}','No Show')" style="background:#FEE2E2;color:#991B1B;padding:8px 14px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;">❌ No Show</button>`;
+    if (!booking.tm30_recorded && booking.status === 'Checked In') html += `<button onclick="markTM30('${booking.booking_id}')" style="background:#FEF3C7;color:#92400E;padding:8px 14px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;">📋 TM30 Done</button>`;
+    html += `</div>`;
+  }
+
+  html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+    <div style="font-weight:700; color:var(--navy); margin-bottom:10px; font-size:14px;">📋 ข้อมูลการจอง</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px;">
+      <div><span style="color:var(--muted);">Booking ID</span><br><strong>${booking.booking_id}</strong></div>
+      <div><span style="color:var(--muted);">แหล่งจอง</span><br><strong>${booking.booking_source || '-'}</strong></div>
+      <div><span style="color:var(--muted);">Check-in</span><br><strong>${formatShortDate(booking.check_in_date)}</strong></div>
+      <div><span style="color:var(--muted);">Check-out</span><br><strong>${formatShortDate(booking.check_out_date)}</strong></div>
+      <div><span style="color:var(--muted);">ผู้ใหญ่</span><br><strong>${booking.num_adults || 1}</strong></div>
+      <div><span style="color:var(--muted);">เด็ก</span><br><strong>${booking.num_children || 0}</strong></div>
+      ${booking.special_requests ? `<div style="grid-column:1/-1"><span style="color:var(--muted);">Special Request</span><br><strong>${booking.special_requests}</strong></div>` : ''}
+    </div>
+  </div>`;
+
+  if (role === 'frontdesk') {
+    html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; color:var(--navy); margin-bottom:10px; font-size:14px;">👤 ข้อมูลแขก</div>
+      <div style="font-size:13px; display:flex; flex-direction:column; gap:6px;">
+        ${booking.phone ? `<div>📱 ${booking.phone}</div>` : ''}
+        ${booking.email ? `<div>✉️ ${booking.email}</div>` : ''}
+        ${booking.nationality ? `<div>🌍 ${booking.nationality} ${getFlagEmoji(booking.nationality)}</div>` : ''}
+      </div>
+    </div>`;
+
+    const photo = photos[bookingId];
+    html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-weight:700; color:var(--navy); font-size:14px;">📷 Passport Photo</div>
+        <label style="background:var(--navy);color:var(--gold);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+          ${photo ? '🔄 ถ่ายใหม่' : '📷 ถ่าย'}
+          <input type="file" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoCapture(event,'${bookingId}')">
+        </label>
+      </div>
+      ${photo ? `<img src="${photo}" class="photo-thumb" onclick="document.getElementById('lightboxImg').src='${photo}'; document.getElementById('lightbox').style.display='flex'">` : '<div style="font-size:13px; color:var(--muted);">ยังไม่มีรูปถ่าย</div>'}
+    </div>`;
+
+    html += renderTM30DraftCard(booking, tm30Draft, !!photo);
+
+    const checkItems = [
+      { key:'passport_taken', label:'Passport / ID ถ่ายรูปแล้ว', icon:'🛂' },
+      { key:'key_issued', label:'รับกุญแจเรียบร้อย', icon:'🔑' },
+      { key:'tm30_done', label:'TM30 บันทึกแล้ว', icon:'📋' },
+      { key:'deposit_collected', label:'รับเงินกรณีต้องเก็บเงินเพิ่ม', icon:'💰' },
+    ];
+    html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; color:var(--navy); margin-bottom:4px; font-size:14px;">✅ Checklist</div>
+      ${allChecked ? '<div style="background:#DCFCE7;color:#166534;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:8px;">✅ Check-in สมบูรณ์</div>' : ''}
+      ${checkItems.map(item => {
+        const checked = !!checklist[item.key];
+        const ts = typeof checklist[item.key] === 'string' ? checklist[item.key] : '';
+        const amountInput = item.key === 'deposit_collected'
+          ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
+              <span style="font-size:11px;color:var(--muted);">จำนวนเงิน</span>
+              <input type="number" inputmode="decimal" min="0" step="0.01" value="${escapeHtmlAttr(checklist.deposit_amount)}" placeholder="0.00" onchange="updateChecklistAmount('${bookingId}', this.value)" style="width:128px;padding:7px 10px;border:1px solid #D6DEE8;border-radius:8px;font:inherit;font-size:12px;">
+              <span style="font-size:11px;color:var(--muted);">กรอก 0 หากไม่มีเงินเพิ่ม</span>
+            </div>`
+          : '';
+        return `<div class="checklist-item">
+          <div class="check-circle ${checked ? 'checked' : ''}" onclick="toggleChecklist('${bookingId}','${item.key}')">${checked ? '✓' : ''}</div>
+          <div style="flex:1;">
+            <div style="font-size:14px; ${checked ? 'text-decoration:line-through;color:var(--muted)' : ''}">${item.icon} ${item.label}</div>
+            ${ts ? `<div style="font-size:11px;color:var(--muted);">${ts}</div>` : ''}
+            ${amountInput}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  const hkTasks = getHkTasks();
+  const hkKey = `${booking.room_id}-${today()}`;
+  let taskBg = '';
+  let taskLabel = '';
+  if (booking.status === 'Pending' && booking.check_in_date === today()) { taskBg = '#DBEAFE'; taskLabel = '🛏️ Prepare Room - Full Setup'; }
+  else if (booking.status === 'Checked In') { taskBg = '#FEF3C7'; taskLabel = '🔄 Daily Clean - Stay-over'; }
+  else if (booking.status === 'Checked Out') { taskBg = '#FEE2E2'; taskLabel = '🧽 Deep Clean + Reset'; }
+
+  if (taskLabel) {
+    const hkState = hkTasks[hkKey]?.status || 'Pending';
+    html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+      <div style="font-weight:700; color:var(--navy); margin-bottom:10px; font-size:14px;">🧹 Housekeeping</div>
+      <div style="background:${taskBg}; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-weight:600; font-size:14px;">${taskLabel}</div>
+      <div style="display:flex; gap:6px;">
+        ${['Pending','In Progress','Done'].map(state => `<button onclick="updateHkStatus('${booking.room_id}','${state}')" style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:${hkState===state?'var(--navy)':'#F3F4F6'};color:${hkState===state?'white':'var(--text)'};">${state}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  const note = notes[bookingId] || '';
+  html += `<div class="card" style="padding:14px; margin-bottom:12px;">
+    <div style="font-weight:700; color:var(--navy); margin-bottom:10px; font-size:14px;">📝 Notes</div>
+    <textarea id="noteArea-${bookingId}" rows="3" placeholder="บันทึกภายใน..." style="resize:none;">${note}</textarea>
+    <button onclick="saveNote('${bookingId}')" style="margin-top:8px; background:var(--navy); color:white; padding:8px 16px; border-radius:8px; border:none; font-size:13px; cursor:pointer;">บันทึก</button>
+  </div>`;
+
+  document.getElementById('guestModalBody').innerHTML = html;
+  document.getElementById('guestModal').classList.add('open');
+}
+
+function updateHkStatus(roomId, status) {
+  const t = today();
+  const hkTasks = getHkTasks();
+  const key = `${roomId}-${t}`;
+  if (!hkTasks[key]) hkTasks[key] = {};
+  hkTasks[key].status = status;
+  hkTasks[key].updated = new Date().toISOString();
+  setHkTasks(hkTasks);
+  showToast(`ห้อง ${roomId} — ${status}`);
+}
+
+// ==================== HOUSEKEEPING ====================
+function renderHousekeeping() {
+  const bookings = getBookings();
+  const t = today();
+  const hkTasks = getHkTasks();
+  
+  const newCheckins = bookings.filter(b => b.check_in_date===t && b.status==='Pending');
+  const stayovers = bookings.filter(b => b.status==='Checked In' && b.check_out_date!==t);
+  const checkouts = bookings.filter(b => b.check_out_date===t && b.status==='Checked Out');
+  
+  const makeHkRow = (b, task, taskBg) => {
+    const key = `${b.room_id}-${t}`;
+    const st = hkTasks[key]?.status || 'Pending';
+    const stColors = { 'Pending':'#FEF3C7', 'In Progress':'#DBEAFE', 'Done':'#DCFCE7' };
+    return `<div class="card" style="padding:14px; margin-bottom:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div>
+          <span style="font-size:20px; font-weight:700; color:var(--navy);">ห้อง ${b.room_id}</span>
+          <span style="font-size:12px; color:var(--muted); margin-left:8px;">ชั้น ${ROOMS.find(r=>r.id==b.room_id)?.floor}</span>
+        </div>
+        <span style="background:${stColors[st]||'#F3F4F6'};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;">${st}</span>
+      </div>
+      <div style="font-size:13px; font-weight:600; background:${taskBg}; padding:8px 12px; border-radius:8px; margin-bottom:8px;">${task}</div>
+      <div style="display:flex; gap:6px;">
+        ${['Pending','In Progress','Done'].map(s=>`<button onclick="updateHkStatusGlobal('${b.room_id}','${s}')" style="flex:1;padding:7px 2px;border-radius:8px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:${st===s?'var(--navy)':'#F3F4F6'};color:${st===s?'white':'var(--text)'};">${s}</button>`).join('')}
+      </div>
+    </div>`;
+  };
+
+  let html = '';
+  if (newCheckins.length) {
+    html += '<div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:8px;">🛏️ Check-in ใหม่ (Full Setup)</div>';
+    html += newCheckins.map(b=>makeHkRow(b,'🛏️ Prepare Room — Full Setup','#DBEAFE')).join('');
+  }
+  if (stayovers.length) {
+    html += '<div style="font-weight:700;color:var(--navy);font-size:14px;margin:12px 0 8px;">🔄 Stay-over (Daily Clean)</div>';
+    html += stayovers.map(b=>makeHkRow(b,'🔄 Daily Clean — Stay-over','#FEF3C7')).join('');
+  }
+  if (checkouts.length) {
+    html += '<div style="font-weight:700;color:var(--navy);font-size:14px;margin:12px 0 8px;">🧽 Check-out (Deep Clean)</div>';
+    html += checkouts.map(b=>makeHkRow(b,'🧽 Deep Clean + Reset','#FEE2E2')).join('');
+  }
+  if (!html) html = emptyState('ไม่มี task วันนี้');
+  document.getElementById('hk-board').innerHTML = html;
+}
+
+function updateHkStatusGlobal(roomId, status) {
+  const t = today();
+  const hkTasks = getHkTasks();
+  const key = `${roomId}-${t}`;
+  if (!hkTasks[key]) hkTasks[key] = {};
+  hkTasks[key].status = status;
+  hkTasks[key].updated = new Date().toISOString();
+  setHkTasks(hkTasks);
+  renderHousekeeping();
+}
+
+// ==================== NEW BOOKING ====================
+function openNewBookingModal(presetRoomId) {
+  const t = today();
+  document.getElementById('nb-checkin').value = t;
+  document.getElementById('nb-checkout').value = '';
+  document.getElementById('nb-name').value = '';
+  document.getElementById('nb-phone').value = '';
+  document.getElementById('nb-nationality').value = '';
+  document.getElementById('nb-special').value = '';
+  
+  const sel = document.getElementById('nb-room');
+  sel.innerHTML = '<option value="">เลือกห้อง</option>' + ROOMS.map(r=>`<option value="${r.id}" ${presetRoomId==r.id?'selected':''}>ห้อง ${r.id} — ${r.type}</option>`).join('');
+  
+  document.getElementById('newBookingModal').classList.add('open');
+}
+
+function saveNewBooking() {
+  const name = document.getElementById('nb-name').value.trim();
+  const checkin = document.getElementById('nb-checkin').value;
+  const checkout = document.getElementById('nb-checkout').value;
+  const roomId = parseInt(document.getElementById('nb-room').value);
+  const source = document.getElementById('nb-source').value;
+  const adults = parseInt(document.getElementById('nb-adults').value)||1;
+  const children = parseInt(document.getElementById('nb-children').value)||0;
+  const phone = document.getElementById('nb-phone').value.trim();
+  const nat = document.getElementById('nb-nationality').value.trim();
+  const special = document.getElementById('nb-special').value.trim();
+  
+  if (!name||!checkin||!checkout||!roomId) { showToast('⚠️ กรอกข้อมูลให้ครบ'); return; }
+  
+  const bookings = getBookings();
+  const newId = 'BK' + String(Date.now()).slice(-6);
+  const room = ROOMS.find(r=>r.id===roomId);
+  bookings.push({
+    booking_id: newId, guest_name: name, nationality: nat, room_id: roomId,
+    room_type: room?room.type:'', check_in_date: checkin, check_out_date: checkout,
+    check_in_time_actual: null, check_out_time_actual: null, booking_source: source,
+    num_adults: adults, num_children: children, special_requests: special,
+    phone, email: '', status: 'Pending', tm30_recorded: false, tm30_recorded_at: null,
+    passport_photo: false, checklist: { passport_taken:false, key_issued:false, tm30_done:false, deposit_collected:false, deposit_amount:'' }
+  });
+  setBookings(bookings);
+  document.getElementById('newBookingModal').classList.remove('open');
+  showToast(`✅ เพิ่ม ${name} สำเร็จ`);
+  renderDashboard();
+  renderGuests();
+}
+
+// ==================== CSV UPLOAD ====================
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'array', raw:true, cellDates:false });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:'', raw:true });
+      parseAndPreviewRows(rows);
+    } catch(err) { showToast('❌ ไม่สามารถอ่านไฟล์ได้'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function normalizeHeaderKey(key) {
+  return String(key || '').toLowerCase().replace(/[\s_\-()]/g,'');
+}
+
+function findCol(row, ...keys) {
+  const rowKeys = Object.keys(row);
+  for (const k of keys) {
+    const needle = normalizeHeaderKey(k);
+    const found = rowKeys.find(key => normalizeHeaderKey(key).includes(needle));
+    if (found && row[found] !== undefined && row[found] !== '') return String(row[found]);
+  }
+  return '';
+}
+
+function hasCol(row, ...keys) {
+  const rowKeys = Object.keys(row);
+  return keys.some(k => {
+    const needle = normalizeHeaderKey(k);
+    return rowKeys.some(key => normalizeHeaderKey(key).includes(needle));
+  });
+}
+
+function normalizeBookingId(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' && Number.isFinite(value)) return String(Math.round(value));
+  const str = String(value).trim();
+  if (!str) return '';
+  if (/^\d+\.0+$/.test(str)) return str.split('.')[0];
+  if (/^\d+(\.\d+)?e[+\-]?\d+$/i.test(str)) {
+    const num = Number(str);
+    if (Number.isFinite(num)) return String(Math.round(num));
+  }
+  return str;
+}
+
+function normalizeRoomTypeName(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/\brooms?\b/g, '')
+    .replace(/[()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitBookingRoomTypes(value, unitTotal) {
+  const raw = String(value || '').trim();
+  if (!raw) return Array.from({ length: unitTotal }, () => '');
+  const parts = raw.split(',').map(part => normalizeRoomTypeName(part)).filter(Boolean);
+  if (!parts.length) return Array.from({ length: unitTotal }, () => '');
+  return Array.from({ length: unitTotal }, (_, index) => parts[index] || parts[parts.length - 1]);
+}
+
+function looksLikeBookingComExport(rows) {
+  if (!rows || !rows.length) return false;
+  const sample = rows[0];
+  return hasCol(sample, 'หมายเลขการจอง', 'reservation number', 'booking number', 'booking id') &&
+    hasCol(sample, 'ชื่อผู้เข้าพัก', 'guest name') &&
+    hasCol(sample, 'เช็คอิน', 'check-in', 'arrival') &&
+    hasCol(sample, 'เช็คเอาท์', 'check-out', 'departure') &&
+    hasCol(sample, 'สถานะ', 'status');
+}
+
+function mapBookingComStatus(exportStatus, checkin, checkout, refDate = today()) {
+  const status = String(exportStatus || '').trim().toLowerCase();
+  if (status.includes('no_show') || status.includes('noshow')) return 'No Show';
+  if (status.includes('cancel') || status.includes('fraud')) return 'Cancelled';
+  if (checkout <= refDate) return 'Checked Out';
+  if (checkin < refDate) return 'Checked In';
+  return 'Pending';
+}
+
+function rangesOverlap(startA, endA, startB, endB) {
+  return startA < endB && startB < endA;
+}
+
+function pickAvailableRoom(assignments, checkin, checkout, preferredType = '') {
+  const preferredKey = normalizeRoomTypeName(preferredType);
+  const preferredRooms = preferredKey ? ROOMS.filter(room => normalizeRoomTypeName(room.type) === preferredKey) : [];
+  const pools = preferredRooms.length ? [preferredRooms, ROOMS] : [ROOMS];
+  for (const pool of pools) {
+    for (const room of pool) {
+      const busy = assignments.some(a =>
+        a.room_id === room.id &&
+        rangesOverlap(checkin, checkout, a.check_in_date, a.check_out_date)
+      );
+      if (!busy) return room;
+    }
+  }
+  const fallbackPool = preferredRooms.length ? preferredRooms : ROOMS;
+  if (fallbackPool.length) return fallbackPool[assignments.length % fallbackPool.length];
+  for (const room of ROOMS) {
+    const busy = assignments.some(a =>
+      a.room_id === room.id &&
+      rangesOverlap(checkin, checkout, a.check_in_date, a.check_out_date)
+    );
+    if (!busy) return room;
+  }
+  return ROOMS[assignments.length % ROOMS.length] || ROOMS[0];
+}
+
+function extractBookingComRawRows(rows) {
+  return rows.map((row, i) => ({
+    booking_id: normalizeBookingId(findCol(row, 'หมายเลขการจอง', 'reservation number', 'booking number', 'bookingid', 'booking_id')) || `BC-${Date.now()}-${i}`,
+    guest_name: findCol(row, 'ชื่อผู้เข้าพัก', 'guestname', 'guest_name', 'name') || `Guest ${i+1}`,
+    check_in_date: normalizeDate(findCol(row, 'เช็คอิน', 'checkin', 'check_in', 'arrival')),
+    check_out_date: normalizeDate(findCol(row, 'เช็คเอาท์', 'checkout', 'check_out', 'departure')),
+    export_status: findCol(row, 'สถานะ', 'status') || 'ok',
+    units: parseInt(findCol(row, 'ยูนิต', 'units', 'unit')) || 1,
+    num_adults: parseInt(findCol(row, 'ผู้ใหญ่', 'adults', 'adult')) || 1,
+    num_children: parseInt(findCol(row, 'เด็ก', 'children', 'child')) || 0,
+    nationality: (findCol(row, 'Booker country', 'ประเทศผู้จอง', 'nationality', 'country', 'nat') || '').toUpperCase(),
+    room_type: findCol(row, 'ประเภทยูนิต', 'room type', 'unit type', 'roomtype'),
+    special_requests: findCol(row, 'หมายเหตุ', 'notes', 'specialrequest', 'special_requests', 'request'),
+  })).filter(row => row.booking_id && row.guest_name && row.check_in_date && row.check_out_date);
+}
+
+function buildBookingsFromBookingCom(rawRows, refDate = today()) {
+  const assignments = [];
+  const expanded = [];
+  rawRows.forEach(raw => {
+    const unitTotal = Math.max(1, parseInt(raw.units) || 1);
+    const roomTypes = splitBookingRoomTypes(raw.room_type, unitTotal);
+    for (let unitIndex = 1; unitIndex <= unitTotal; unitIndex++) {
+      expanded.push({ ...raw, unit_index: unitIndex, unit_total: unitTotal, room_type_unit: roomTypes[unitIndex - 1] || '' });
+    }
+  });
+
+  expanded.sort((a, b) => {
+    if (a.check_in_date !== b.check_in_date) return a.check_in_date.localeCompare(b.check_in_date);
+    if (a.export_status !== b.export_status) return a.export_status === 'ok' ? -1 : 1;
+    if (a.check_out_date !== b.check_out_date) return a.check_out_date.localeCompare(b.check_out_date);
+    return String(a.booking_id).localeCompare(String(b.booking_id));
+  });
+
+  return expanded.map(raw => {
+    const room = pickAvailableRoom(assignments, raw.check_in_date, raw.check_out_date, raw.room_type_unit || raw.room_type);
+    const status = mapBookingComStatus(raw.export_status, raw.check_in_date, raw.check_out_date, refDate);
+    const unitSuffix = raw.unit_total > 1 ? ` (${raw.unit_index}/${raw.unit_total})` : '';
+    const booking = {
+      booking_id: raw.unit_total > 1 ? `${raw.booking_id}-${raw.unit_index}` : String(raw.booking_id),
+      guest_name: `${raw.guest_name}${unitSuffix}`,
+      nationality: raw.nationality,
+      room_id: room.id,
+      room_type: room.type || raw.room_type_unit || raw.room_type || '',
+      check_in_date: raw.check_in_date,
+      check_out_date: raw.check_out_date,
+      check_in_time_actual: status === 'Checked In' ? `${raw.check_in_date}T14:00:00` : null,
+      check_out_time_actual: status === 'Checked Out' ? `${raw.check_out_date}T11:00:00` : null,
+      booking_source: 'Booking.com',
+      num_adults: raw.num_adults || 1,
+      num_children: raw.num_children || 0,
+      special_requests: raw.special_requests || '',
+      phone: '',
+      email: '',
+      status,
+      tm30_recorded: status !== 'Checked In',
+      tm30_recorded_at: null,
+      manual_room_locked: false,
+      manual_room_locked_at: null,
+      passport_photo: false,
+      checklist: { passport_taken:false, key_issued:false, tm30_done:false, deposit_collected:false, deposit_amount:'' },
+    };
+    if (status !== 'Cancelled' && status !== 'No Show') {
+      assignments.push({ room_id: room.id, check_in_date: raw.check_in_date, check_out_date: raw.check_out_date });
+    }
+    return booking;
+  });
+}
+
+function parseAndPreviewRows(rows) {
+  if (!rows||rows.length===0) { showToast('⚠️ ไม่พบข้อมูลในไฟล์'); return; }
+  const parsed = looksLikeBookingComExport(rows) ? buildBookingsFromBookingCom(extractBookingComRawRows(rows), today()).map(r => ({ ...r, _valid: true })) : rows.map((row,i) => {
+    const checkin = normalizeDate(findCol(row,'checkindate','checkin','check_in','arrival','arrivaldate'));
+    const checkout = normalizeDate(findCol(row,'checkoutdate','checkout','check_out','departure','departuredate'));
+    const roomRaw = findCol(row,'roomid','room','roomnumber','roomno');
+    const roomId = parseInt(String(roomRaw).replace(/[^0-9]/g,''))||'';
+    return {
+      booking_id: normalizeBookingId(findCol(row,'bookingid','booking_id','reservationid','id')) || `IMP-${Date.now()}-${i}`,
+      guest_name: findCol(row,'guestname','guest_name','name','firstname','guestfullname') || `Guest ${i+1}`,
+      nationality: findCol(row,'nationality','country','nat'),
+      room_id: roomId,
+      room_type: findCol(row,'roomtype','room_type','type'),
+      check_in_date: checkin, check_out_date: checkout,
+      booking_source: findCol(row,'bookingsource','source','channel','platform') || 'Direct',
+      num_adults: parseInt(findCol(row,'adults','numadults','pax'))||1,
+      num_children: parseInt(findCol(row,'children','numchildren','child'))||0,
+      special_requests: findCol(row,'special','specialrequest','request','notes'),
+      phone: findCol(row,'phone','tel','mobile','telephone'),
+      email: findCol(row,'email'),
+      _valid: !!(checkin && checkout && roomId),
+    };
+  });
+  pendingImportData = parsed;
+  
+  const preview = parsed.slice(0,5);
+  let tableHtml = `<table style="width:100%;border-collapse:collapse;font-size:11px;">
+    <tr style="background:var(--navy);color:white;">
+      <th style="padding:6px 8px;text-align:left;">Booking</th>
+      <th style="padding:6px 8px;text-align:left;">ชื่อ</th>
+      <th style="padding:6px 8px;text-align:left;">ประเภท/ห้อง</th>
+      <th style="padding:6px 8px;text-align:left;">เข้าพัก</th>
+      <th style="padding:6px 8px;text-align:left;">สถานะ</th>
+    </tr>`;
+  preview.forEach(r => {
+    tableHtml += `<tr style="border-bottom:1px solid #F3F4F6;background:${r._valid?'':'#FEF2F2'};">
+      <td style="padding:6px 8px;">${r.booking_id}</td>
+      <td style="padding:6px 8px;">${r.guest_name}</td>
+      <td style="padding:6px 8px;">${r.room_type || '-'}${r.room_id ? ` · ${r.room_id}` : ''}</td>
+      <td style="padding:6px 8px;">${r.check_in_date||'?'} → ${r.check_out_date||'?'}</td>
+      <td style="padding:6px 8px;">${r._valid ? (r.status || 'Pending') : '⚠️'}</td>
+    </tr>`;
+  });
+  if (parsed.length > 5) tableHtml += `<tr><td colspan="5" style="padding:6px 8px;color:var(--muted);text-align:center;">...และอีก ${parsed.length-5} รายการ</td></tr>`;
+  tableHtml += '</table>';
+  
+  const valid = parsed.filter(r=>r._valid).length;
+  const invalid = parsed.length - valid;
+  document.getElementById('confirmImportBtn').textContent = `นำเข้า ${valid} การจอง${invalid>0?` (⚠️ ${invalid} รายการมีปัญหา)`:''}`;
+  document.getElementById('preview-table').innerHTML = tableHtml;
+  document.getElementById('upload-preview').style.display = 'block';
+}
+
+function confirmImport() {
+  if (!pendingImportData) return;
+  const existing = getBookings();
+  const existingIds = new Set(existing.map(b=>b.booking_id));
+  let added=0, skipped=0;
+  const toAdd = pendingImportData.filter(r=>r._valid).map(r => {
+    const bookingId = normalizeBookingId(r.booking_id);
+    if (!bookingId || existingIds.has(bookingId)) { skipped++; return null; }
+    existingIds.add(bookingId);
+    return { check_in_time_actual:null, check_out_time_actual:null, status:'Pending', tm30_recorded:false, tm30_recorded_at:null, manual_room_locked:false, manual_room_locked_at:null, passport_photo:false, checklist:{passport_taken:false,key_issued:false,tm30_done:false,deposit_collected:false,deposit_amount:''}, ...r, booking_id: bookingId };
+  }).filter(Boolean);
+  setBookings([...existing, ...toAdd]);
+  added = toAdd.length;
+  showToast(`✅ นำเข้า ${added} การจอง สำเร็จ${skipped>0?' | ⚠️ '+skipped+' ซ้ำ':''}`);
+  cancelUpload();
+  showPage('dashboard');
+}
+
+function cancelUpload() {
+  pendingImportData = null;
+  document.getElementById('upload-preview').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+}
+
+// Drag & drop
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); const f=e.dataTransfer.files[0]; if(f){ document.getElementById('fileInput').files=e.dataTransfer.files; handleFileUpload({target:e.dataTransfer}); }});
+
+// ==================== SETTINGS ====================
+function initSettings() {
+  document.getElementById('settingDate').value = getSettingDate();
+  document.getElementById('settingHotelName').value = readStorage('lecanal_hotel_name', 'Le Canal Boutique House');
+  renderAIAdvise();
+  updateRoleButtons();
+}
+
+function renderAIAdvise() {
+  const tm30Pending = getTm30PendingBookings();
+  const headline = document.getElementById('aiAdviceHeadline');
+  const badge = document.getElementById('aiAdviceBadge');
+  const summary = document.getElementById('aiAdviceSummary');
+  const count = document.getElementById('tm30PendingCount');
+  const list = document.getElementById('tm30AdviceList');
+  if (!headline || !badge || !summary || !count || !list) return;
+
+  if (tm30Pending.length === 0) {
+    headline.textContent = 'No urgent advice';
+    badge.textContent = '0 alerts';
+    badge.style.background = '#ECFDF5';
+    badge.style.color = '#166534';
+    summary.textContent = 'All checked-in guests with recorded check-in time already have TM30 captured.';
+    count.textContent = '0 pending';
+    list.innerHTML = `<div style="font-size:13px; color:var(--muted); padding:4px 0;">No TM30 follow-up needed right now.</div>`;
+    return;
+  }
+
+  headline.textContent = `TM30 pending for ${tm30Pending.length} guests`;
+  badge.textContent = `${tm30Pending.length} alerts`;
+  badge.style.background = '#FEF2F2';
+  badge.style.color = '#B91C1C';
+  summary.textContent = `Please record TM30 for ${tm30Pending.map(b => b.guest_name).join(', ')}. Prioritize guests checked in more than 2 hours ago.`;
+  count.textContent = `${tm30Pending.length} pending`;
+  list.innerHTML = tm30Pending.map(b => {
+    const room = b.room_id ? `Room ${b.room_id}` : 'Unassigned room';
+    return `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #F1F5F9;">
+      <div>
+        <div style="font-size:14px; font-weight:700; color:var(--navy);">${b.guest_name}</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:3px;">${room} · Check-in ${formatShortDate(b.check_in_date)}</div>
+      </div>
+      <div style="background:#FFF7ED; color:#C2410C; border:1px solid #FDBA74; border-radius:999px; padding:5px 9px; font-size:11px; font-weight:700; white-space:nowrap;">TM30 pending</div>
+    </div>`;
+  }).join('');
+}
+
+function setRole(role) {
+  writeStorage('lecanal_role', role);
+  updateRoleButtons();
+  showToast(`บทบาท: ${role === 'frontdesk' ? 'Front Desk' : 'Housekeeper'}`);
+}
+
+function updateRoleButtons() {
+  const role = getRole();
+  document.getElementById('roleBtn-frontdesk').className = role==='frontdesk' ? 'btn-primary' : 'btn-outline';
+  document.getElementById('roleBtn-frontdesk').style.flex = '1';
+  document.getElementById('roleBtn-frontdesk').style.fontSize = '13px';
+  document.getElementById('roleBtn-frontdesk').style.padding = '10px 8px';
+  document.getElementById('roleBtn-housekeeper').className = role==='housekeeper' ? 'btn-primary' : 'btn-outline';
+  document.getElementById('roleBtn-housekeeper').style.flex = '1';
+  document.getElementById('roleBtn-housekeeper').style.fontSize = '13px';
+  document.getElementById('roleBtn-housekeeper').style.padding = '10px 8px';
+}
+
+document.getElementById('settingDate').addEventListener('change', (e)=>{
+  writeStorage('lecanal_date', e.target.value);
+  showToast('เปลี่ยนวันที่แล้ว');
+  renderDashboard();
+});
+document.getElementById('settingHotelName').addEventListener('change', (e)=>{
+  writeStorage('lecanal_hotel_name', e.target.value);
+});
+
+function exportData() {
+  const data = { bookings: getBookings(), checkins: getCheckins(), notes: getNotes(), hkTasks: getHkTasks() };
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data,null,2));
+  a.download = `lecanal-export-${today()}.json`;
+  a.click();
+}
+
+function confirmClearData() {
+  if (confirm('ลบข้อมูลทั้งหมด? (ย้อนกลับไม่ได้)')) {
+    ['lecanal_bookings','lecanal_checkins','lecanal_photos','lecanal_hk_tasks','lecanal_notes'].forEach(removeStorage);
+    showToast('🗑️ ลบข้อมูลแล้ว');
+    renderDashboard();
+  }
+}
+
+// ==================== SAMPLE DATA ====================
+function loadSampleData() {
+  const samples = buildBookingsFromBookingCom(window.BOOKING_COM_APR_2026_RAW || [], today());
+  const sampleIds = new Set(samples.map(s => s.booking_id));
+
+  if (false) {
+  const samples = [
+    { booking_id:'BK001', guest_name:'Apinya Thongchai', nationality:'TH', room_id:7, room_type:'Deluxe Double', check_in_date:t, check_out_date:fmt(tomorrow), booking_source:'Booking.com', num_adults:2, num_children:0, special_requests:'High floor', phone:'0891234567', email:'apinya@email.com', status:'Pending', tm30_recorded:false },
+    { booking_id:'BK002', guest_name:'James Wilson', nationality:'GB', room_id:13, room_type:'Honeymoon Suite', check_in_date:t, check_out_date:fmt(nextweek), booking_source:'Airbnb', num_adults:2, num_children:0, special_requests:'Champagne welcome', phone:'', email:'james@email.com', status:'Checked In', tm30_recorded:false, check_in_time_actual: new Date(Date.now() - 3*60*60*1000).toISOString() },
+    { booking_id:'BK003', guest_name:'Li Wei', nationality:'CN', room_id:8, room_type:'Deluxe Double', check_in_date:fmt(yesterday), check_out_date:t, booking_source:'Agoda', num_adults:2, num_children:1, special_requests:'', phone:'', email:'', status:'Checked In', tm30_recorded:true, check_in_time_actual: new Date(Date.now() - 26*60*60*1000).toISOString() },
+    { booking_id:'BK004', guest_name:'สมชาย ใจดี', nationality:'TH', room_id:3, room_type:'Superior Double', check_in_date:fmt(yesterday), check_out_date:fmt(nextweek), booking_source:'Direct', num_adults:2, num_children:0, special_requests:'Extra pillows', phone:'0812345678', email:'', status:'Checked In', tm30_recorded:true, check_in_time_actual: new Date(Date.now() - 2*60*60*1000).toISOString() },
+    { booking_id:'BK005', guest_name:'Emma Dubois', nationality:'FR', room_id:10, room_type:'Deluxe Twin Bed', check_in_date:fmt(nextweek), check_out_date:fmt(new Date(new Date(t).setDate(new Date(t).getDate()+5))), booking_source:'Booking.com', num_adults:2, num_children:0, special_requests:'', phone:'', email:'emma@email.com', status:'Pending', tm30_recorded:false },
+  ];
+  }
+
+  const existing = getBookings().filter(b => !sampleIds.has(b.booking_id));
+  setBookings([...existing, ...samples]);
+  showToast('โหลดข้อมูล Booking.com เดือน เม.ย. 2026 แล้ว');
+  showPage('dashboard');
+}
+
+// ==================== TOAST ====================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display='none', 3000);
+}
+
+// ==================== SCHEDULE VIEW (Day / Week / Month) ====================
+let calViewMonth = null;   // { year, month }
+let calViewDate  = null;   // ISO string for day/week anchor
+let currentCalView  = 'gantt';
+let currentPeriod   = 'day';  // 'day' | 'week' | 'month'
+let scheduleMenuCollapsed = readStorage('lecanal_schedule_menu_collapsed', '0') === '1';
+let scheduleChromeCollapsed = readStorage('lecanal_schedule_chrome_collapsed', '0') === '1';
+
+const TH_MONTHS_FULL  = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const TH_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const TH_DAYS_SHORT   = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+function getAnchorDate() {
+  if (!calViewDate) calViewDate = today();
+  return calViewDate;
+}
+function getCalMonth() {
+  if (!calViewMonth) {
+    const t = new Date(today());
+    calViewMonth = { year: t.getFullYear(), month: t.getMonth() };
+  }
+  return calViewMonth;
+}
+function getDaysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); }
+function addDays(iso, n) {
+  const d = new Date(iso); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0];
+}
+function isoToUtcMs(iso) {
+  const [year, month, day] = String(iso || '').split('-').map(Number);
+  return Date.UTC(year, (month || 1) - 1, day || 1);
+}
+function diffIsoDays(startIso, endIso) {
+  return Math.round((isoToUtcMs(endIso) - isoToUtcMs(startIso)) / 86400000);
+}
+function getWeekStart(iso) {        // Monday-based
+  const d = new Date(iso);
+  const day = d.getDay();           // 0=Sun
+  const diff = (day === 0) ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split('T')[0];
+}
+
+// -------- Period toggle --------
+function setPeriod(p) {
+  currentPeriod = p;
+  // sync anchor
+  if (p === 'day' || p === 'week') { if (!calViewDate) calViewDate = today(); }
+  if (p === 'month') { const d=new Date(getAnchorDate()); calViewMonth={year:d.getFullYear(),month:d.getMonth()}; }
+  updatePeriodButtons();
+  updateSubviewVisibility();
+  renderSchedule();
+}
+function updatePeriodButtons() {
+  ['day','week','month'].forEach(p => {
+    const btn = document.getElementById('period-btn-'+p);
+    if (!btn) return;
+    const active = p === currentPeriod;
+    btn.style.background  = active ? 'white' : 'transparent';
+    btn.style.color       = active ? 'var(--navy)' : 'rgba(255,255,255,0.7)';
+  });
+}
+function isScheduleFocusMode() {
+  return currentPeriod === 'week' || (currentPeriod === 'month' && currentCalView === 'gantt');
+}
+function updateScheduleDockLabels() {
+  const chromeBtn = document.getElementById('scheduleChromeToggle');
+  const navBtn = document.getElementById('scheduleNavToggle');
+  if (chromeBtn) chromeBtn.textContent = scheduleChromeCollapsed ? 'ขยายส่วนหัว' : 'ย่อส่วนหัว';
+  if (navBtn) navBtn.textContent = scheduleMenuCollapsed ? 'แสดงเมนู' : 'ซ่อนเมนู';
+}
+function updateMonthlyFullscreenMode() {
+  const monthlyPage = document.getElementById('page-monthly');
+  if (!monthlyPage) return;
+  monthlyPage.classList.toggle('gantt-fullscreen', isScheduleFocusMode());
+}
+function updateScheduleShell() {
+  const monthlyPage = document.getElementById('page-monthly');
+  const dock = document.getElementById('scheduleDock');
+  const isActive = !!monthlyPage && monthlyPage.classList.contains('active');
+  const focusMode = isActive && isScheduleFocusMode();
+  if (monthlyPage) {
+    monthlyPage.classList.toggle('schedule-chrome-collapsed', focusMode && scheduleChromeCollapsed);
+  }
+  document.body.classList.toggle('schedule-nav-collapsed', focusMode && scheduleMenuCollapsed);
+  if (dock) dock.classList.toggle('visible', focusMode);
+  updateScheduleDockLabels();
+}
+function setScheduleMenuCollapsed(collapsed) {
+  scheduleMenuCollapsed = !!collapsed;
+  writeStorage('lecanal_schedule_menu_collapsed', scheduleMenuCollapsed ? '1' : '0');
+  updateScheduleShell();
+}
+function toggleScheduleMenu() {
+  setScheduleMenuCollapsed(!scheduleMenuCollapsed);
+}
+function setScheduleChromeCollapsed(collapsed) {
+  scheduleChromeCollapsed = !!collapsed;
+  writeStorage('lecanal_schedule_chrome_collapsed', scheduleChromeCollapsed ? '1' : '0');
+  updateScheduleShell();
+}
+function toggleScheduleChrome() {
+  setScheduleChromeCollapsed(!scheduleChromeCollapsed);
+}
+function updateSubviewVisibility() {
+  // subview tabs (Gantt/Calendar/Summary) only shown in Month mode
+  const tabs    = document.getElementById('subview-tabs');
+  const legend  = document.getElementById('gantt-legend');
+  const viewDay = document.getElementById('view-day');
+  const viewWeek = document.getElementById('view-week');
+  if (!tabs) return;
+  if (currentPeriod === 'month') {
+    tabs.style.display = 'flex';
+    // restore the active cal view
+    setCalViewVisibility(currentCalView);
+    legend.style.display = (currentCalView==='gantt') ? 'flex' : 'none';
+  } else {
+    tabs.style.display = 'none';
+    // hide all sub-panels, show the period-specific one
+    ['gantt','calendar','summary'].forEach(v => {
+      const el = document.getElementById('view-'+v);
+      if (el) el.style.display = 'none';
+    });
+    legend.style.display = (currentPeriod!=='month') ? 'flex' : 'none';
+    if (viewDay) viewDay.style.display = currentPeriod==='day' ? 'block' : 'none';
+    if (viewWeek) viewWeek.style.display = currentPeriod==='week' ? 'flex' : 'none';
+  }
+  updateMonthlyFullscreenMode();
+  updateScheduleShell();
+}
+function setCalViewVisibility(view) {
+  // only active inside month mode
+  ['gantt','calendar','summary'].forEach(v => {
+    const el = document.getElementById('view-'+v);
+    if (el) el.style.display = (v===view) ? (v==='gantt' ? 'flex' : 'block') : 'none';
+    const btn = document.getElementById('view-btn-'+v);
+    if (btn) btn.classList.toggle('active', v===view);
+  });
+  const viewDay = document.getElementById('view-day');
+  const viewWeek = document.getElementById('view-week');
+  if (viewDay) viewDay.style.display = 'none';
+  if (viewWeek) viewWeek.style.display = 'none';
+}
+function setCalView(view) {
+  currentCalView = view;
+  setCalViewVisibility(view);
+  const legend = document.getElementById('gantt-legend');
+  if (legend) legend.style.display = (view==='gantt') ? 'flex':'none';
+  updateMonthlyFullscreenMode();
+  renderCalViewContent();
+}
+
+// -------- Navigate --------
+function navigatePeriod(delta) {
+  if (currentPeriod === 'day')  { calViewDate = addDays(getAnchorDate(), delta); }
+  if (currentPeriod === 'week') { calViewDate = addDays(getAnchorDate(), delta*7); }
+  if (currentPeriod === 'month') {
+    const cm = getCalMonth();
+    let m = cm.month + delta, y = cm.year;
+    if (m<0){m=11;y--;} if(m>11){m=0;y++;}
+    calViewMonth = {year:y,month:m};
+    // sync anchor date
+    calViewDate = `${y}-${String(m+1).padStart(2,'0')}-01`;
+  }
+  renderSchedule();
+}
+// legacy alias
+function changeMonth(delta) { navigatePeriod(delta); }
+
+// -------- Main render --------
+function renderSchedule() {
+  updateSubviewVisibility();
+  updateMonthlyFullscreenMode();
+  updateScheduleShell();
+  updateHeaderLabel();
+  renderStatsBar();
+  if (currentPeriod==='day')   renderDayView();
+  if (currentPeriod==='week')  renderWeekGantt();
+  if (currentPeriod==='month') renderCalViewContent();
+}
+function renderMonthly() { renderSchedule(); }  // alias called by showPage
+
+function updateHeaderLabel() {
+  const lbl = document.getElementById('scheduleLabel');
+  const sub = document.getElementById('scheduleSubLabel');
+  if (!lbl) return;
+  if (currentPeriod === 'day') {
+    const d = new Date(getAnchorDate());
+    lbl.textContent = `${d.getDate()} ${TH_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()+543}`;
+    sub.textContent = TH_DAYS_SHORT[d.getDay()];
+  } else if (currentPeriod === 'week') {
+    const ws = getWeekStart(getAnchorDate());
+    const we = addDays(ws, 6);
+    const d1=new Date(ws), d2=new Date(we);
+    lbl.textContent = `${d1.getDate()} – ${d2.getDate()} ${TH_MONTHS_SHORT[d2.getMonth()]} ${d2.getFullYear()+543}`;
+    sub.textContent = `สัปดาห์`;
+  } else {
+    const cm = getCalMonth();
+    lbl.textContent = `${TH_MONTHS_FULL[cm.month]} ${cm.year+543}`;
+    sub.textContent = `${getDaysInMonth(cm.year,cm.month)} วัน`;
+  }
+}
+
+// -------- Stats bar --------
+function renderStatsBar() {
+  const el = document.getElementById('sched-stats-bar');
+  if (!el) return;
+  let stats = [];
+  if (currentPeriod === 'day') {
+    const d = getAnchorDate();
+    const bookings = getBookings().filter(b=>b.status!=='Cancelled');
+    const staying   = bookings.filter(b=>b.check_in_date<=d && b.check_out_date>d).length;
+    const checkin   = bookings.filter(b=>b.check_in_date===d).length;
+    const checkout  = bookings.filter(b=>b.check_out_date===d).length;
+    const occ       = Math.round(staying/13*100);
+    stats = [{l:'Occupied',v:staying+'/13'},{l:'Check-in',v:checkin},{l:'Check-out',v:checkout},{l:'Occ.',v:occ+'%'}];
+  } else if (currentPeriod === 'week') {
+    const ws = getWeekStart(getAnchorDate());
+    const we = addDays(ws,6);
+    const bk = getBookings().filter(b=>b.status!=='Cancelled'&&b.check_in_date<=we&&b.check_out_date>=ws);
+    let rn=0;
+    bk.forEach(b=>{
+      const s=new Date(Math.max(new Date(b.check_in_date),new Date(ws)));
+      const e=new Date(Math.min(new Date(b.check_out_date),new Date(addDays(we,1))));
+      rn+=Math.max(0,Math.round((e-s)/86400000));
+    });
+    const occ=Math.round(rn/(13*7)*100);
+    stats=[{l:'Occ.',v:occ+'%'},{l:'การจอง',v:bk.length},{l:'Check-in',v:bk.filter(b=>b.check_in_date>=ws&&b.check_in_date<=we).length},{l:'Room-nights',v:rn}];
+  } else {
+    const cm = getCalMonth();
+    const dim = getDaysInMonth(cm.year,cm.month);
+    const fd=`${cm.year}-${String(cm.month+1).padStart(2,'0')}-01`;
+    const ld=`${cm.year}-${String(cm.month+1).padStart(2,'0')}-${String(dim).padStart(2,'0')}`;
+    const bk=getBookings().filter(b=>b.status!=='Cancelled'&&b.check_in_date<=ld&&b.check_out_date>=fd);
+    let rn=0;
+    bk.forEach(b=>{
+      const s=new Date(Math.max(new Date(b.check_in_date),new Date(fd)));
+      const e=new Date(Math.min(new Date(b.check_out_date),new Date(addDays(ld,1))));
+      rn+=Math.max(0,Math.round((e-s)/86400000));
+    });
+    const occ=Math.round(rn/(13*dim)*100);
+    const src={}; bk.forEach(b=>{const s=b.booking_source||'Direct';src[s]=(src[s]||0)+1;});
+    const top=Object.entries(src).sort((a,b)=>b[1]-a[1])[0];
+    stats=[{l:'Occupancy',v:occ+'%'},{l:'การจอง',v:bk.length},{l:'แขก',v:new Set(bk.map(b=>b.booking_id)).size},{l:'Top Source',v:top?top[0].replace('.com',''):'—'}];
+  }
+  el.innerHTML = stats.map(s=>`<div style="background:rgba(255,255,255,0.12);border-radius:9px;padding:7px 4px;text-align:center;">
+    <div style="font-size:14px;font-weight:700;color:white;line-height:1.2;">${s.v}</div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.6);margin-top:2px;">${s.l}</div>
+  </div>`).join('');
+}
+
+// -------- DAY VIEW --------
+function renderDayView() {
+  const d = getAnchorDate();
+  const bookings = getBookings().filter(b=>b.status!=='Cancelled');
+  const checkin  = bookings.filter(b=>b.check_in_date===d);
+  const checkout = bookings.filter(b=>b.check_out_date===d);
+  const staying  = bookings.filter(b=>b.check_in_date<d&&b.check_out_date>d&&b.status==='Checked In');
+  const isToday  = d===today();
+
+  let html = '';
+
+  // Room grid (same as Rooms tab but in compact form)
+  html += `<div style="margin-bottom:16px;">
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">สถานะห้องพัก</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">`;
+  ROOMS.forEach(room=>{
+    const occ=bookings.find(b=>b.room_id==room.id&&b.status==='Checked In'&&b.check_in_date<=d&&b.check_out_date>d);
+    const ci=bookings.find(b=>b.room_id==room.id&&b.check_in_date===d&&b.status==='Pending');
+    const co=bookings.find(b=>b.room_id==room.id&&b.check_out_date===d&&b.status==='Checked In');
+    let bg='#F0FDF4',border='#BBF7D0',tc='#166534';
+    if(co){bg='#FEF3C7';border='#F59E0B';tc='#92400E';}
+    else if(occ){bg='var(--navy)';border='var(--navy)';tc='var(--gold)';}
+    else if(ci){bg='#DBEAFE';border='#93C5FD';tc='#1E40AF';}
+    const bk=co||occ||ci;
+    html+=`<div onclick="${bk?`openGuestModal('${bk.booking_id}')`:`handleRoomTap(${room.id})`}" style="background:${bg};border:1.5px solid ${border};border-radius:10px;padding:8px 6px;cursor:pointer;text-align:center;">
+      <div style="font-size:15px;font-weight:800;color:${tc};">${room.id}</div>
+      <div style="font-size:8px;color:${tc==='var(--gold)'?'rgba(255,255,255,0.6)':tc};opacity:0.8;">${room.type.split(' ')[0]}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+
+  // Check-in list
+  if (checkin.length) {
+    html += sectionHeader('🛎️ Check-in วันนี้', checkin.length);
+    html += checkin.map(b=>dayBookingCard(b,'#DCFCE7','#166534')).join('');
+  }
+  // Check-out list
+  if (checkout.length) {
+    html += sectionHeader('🚪 Check-out วันนี้', checkout.length);
+    html += checkout.map(b=>dayBookingCard(b,'#FEE2E2','#991B1B')).join('');
+  }
+  // Staying
+  if (staying.length) {
+    html += sectionHeader('🛏️ กำลังพักอยู่', staying.length);
+    html += staying.map(b=>dayBookingCard(b,'#F3F4F6','var(--muted)')).join('');
+  }
+  if (!checkin.length && !checkout.length && !staying.length) {
+    html += `<div style="text-align:center;padding:40px;color:var(--muted);">ไม่มีการจองวันนี้</div>`;
+  }
+  document.getElementById('day-content').innerHTML = html;
+}
+
+function sectionHeader(label, count) {
+  return `<div style="display:flex;align-items:center;gap:8px;margin:14px 0 8px;">
+    <span style="font-size:13px;font-weight:700;color:var(--navy);">${label}</span>
+    <span style="background:var(--navy);color:white;border-radius:99px;padding:1px 8px;font-size:11px;font-weight:700;">${count}</span>
+  </div>`;
+}
+function dayBookingCard(b, bg, tc) {
+  const room = ROOMS.find(r=>r.id==b.room_id);
+  const srcClass = b.booking_source==='Booking.com'?'source-booking':b.booking_source==='Airbnb'?'source-airbnb':b.booking_source==='Agoda'?'source-agoda':b.booking_source==='Walk-in'?'source-walkin':'source-direct';
+  return `<div onclick="openGuestModal('${b.booking_id}')" style="background:${bg};border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px;">
+    <div style="background:var(--navy);color:var(--gold);width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;">${b.room_id}</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:600;font-size:14px;color:${tc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${b.guest_name} ${getFlagEmoji(b.nationality||'')}</div>
+      <div style="font-size:11px;color:${tc};opacity:0.7;">${room?room.type:''} · ${formatShortDate(b.check_in_date)}→${formatShortDate(b.check_out_date)}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+      <span class="badge ${srcClass}" style="font-size:9px;">${b.booking_source||'Direct'}</span>
+      ${getStatusBadge(b.status)}
+    </div>
+  </div>`;
+}
+
+function getScheduleMetrics(mode) {
+  const vw = window.innerWidth || 390;
+  if (mode === 'week') {
+    if (vw >= 1200) return { roomLabel: 152, dayWidth: 104, rowHeight: 58 };
+    if (vw >= 768) return { roomLabel: 128, dayWidth: 78, rowHeight: 52 };
+    return { roomLabel: 104, dayWidth: 56, rowHeight: 46 };
+  }
+  if (vw >= 1200) return { roomLabel: 156, dayWidth: 44, rowHeight: 52 };
+  if (vw >= 768) return { roomLabel: 132, dayWidth: 38, rowHeight: 46 };
+  return { roomLabel: 106, dayWidth: 32, rowHeight: 40 };
+}
+function getRoomTypeCompact(type) {
+  return String(type || '')
+    .replace('Deluxe Double', 'Deluxe')
+    .replace('Superior Double', 'Superior')
+    .replace('Deluxe Twin Bed', 'Twin')
+    .replace('Honeymoon Suite', 'Suite');
+}
+function getFloorGroups() {
+  const grouped = [];
+  ROOMS.forEach(room => {
+    let group = grouped.find(item => item.floor === room.floor);
+    if (!group) {
+      group = { floor: room.floor, rooms: [] };
+      grouped.push(group);
+    }
+    group.rooms.push(room);
+  });
+  return grouped;
+}
+function getBookingTone(status) {
+  if (status === 'Pending') {
+    return {
+      bg: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+      color: '#92400E',
+      border: '#F59E0B'
+    };
+  }
+  if (status === 'Checked Out' || status === 'No Show') {
+    return {
+      bg: 'linear-gradient(135deg, #E5E7EB 0%, #CBD5E1 100%)',
+      color: '#475569',
+      border: '#94A3B8'
+    };
+  }
+  return {
+    bg: 'linear-gradient(135deg, #0C2F57 0%, #1D4F91 100%)',
+    color: '#F8FAFC',
+    border: '#133B6A'
+  };
+}
+function getGuestChipLabel(guestName, detailed) {
+  const name = String(guestName || '').trim();
+  if (!name) return 'Guest';
+  if (detailed) return name;
+  return name.split(/\s+/)[0];
+}
+function renderScheduleFloorDivider(floor, roomLabelWidth, trackWidth, roomCount) {
+  return `<div style="display:flex;align-items:center;height:28px;background:linear-gradient(90deg, rgba(12,47,87,0.08) 0%, rgba(12,47,87,0.03) 100%);border-bottom:1px solid #E2E8F0;">
+    <div style="width:${roomLabelWidth}px;min-width:${roomLabelWidth}px;padding:0 10px;font-size:10px;font-weight:800;color:var(--navy);letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0;">Floor ${floor}</div>
+    <div style="width:${trackWidth}px;min-width:${trackWidth}px;padding:0 10px;font-size:10px;color:#64748B;">${roomCount} rooms</div>
+  </div>`;
+}
+
+// -------- WEEK GANTT (7 cols) --------
+let scheduleDragBookingId = null;
+let scheduleDragRoomId = null;
+
+function getRoomById(roomId) {
+  return ROOMS.find(room => room.id === parseInt(roomId, 10)) || null;
+}
+
+function getBookingRoomTypeKey(booking) {
+  const room = getRoomById(booking && booking.room_id);
+  return normalizeRoomTypeName(room ? room.type : (booking && booking.room_type) || '');
+}
+
+function getRoomsByTypeKey(typeKey) {
+  return ROOMS.filter(room => normalizeRoomTypeName(room.type) === typeKey);
+}
+
+function canBookingParticipateInAutoAssign(booking) {
+  return !!booking && booking.status !== 'Cancelled' && booking.status !== 'No Show';
+}
+
+function bookingAssignmentsOverlap(a, b) {
+  return rangesOverlap(a.check_in_date, a.check_out_date, b.check_in_date, b.check_out_date);
+}
+
+function clearScheduleDropHighlights() {
+  document.querySelectorAll('.schedule-drop-row.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function handleScheduleBookingClick(event, bookingId) {
+  if (scheduleDragBookingId) {
+    event.preventDefault();
+    return;
+  }
+  openGuestModal(bookingId);
+}
+
+function handleScheduleBookingDragStart(event, bookingId) {
+  const booking = getBookings().find(item => item.booking_id === bookingId);
+  if (!booking || booking.status === 'Cancelled' || booking.status === 'No Show') {
+    event.preventDefault();
+    return;
+  }
+  scheduleDragBookingId = bookingId;
+  scheduleDragRoomId = parseInt(booking.room_id, 10) || null;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', bookingId);
+  }
+  if (event.currentTarget) {
+    event.currentTarget.classList.add('schedule-dragging');
+  }
+}
+
+function handleScheduleBookingDragEnd(event) {
+  if (event.currentTarget) {
+    event.currentTarget.classList.remove('schedule-dragging');
+  }
+  clearScheduleDropHighlights();
+  setTimeout(() => {
+    scheduleDragBookingId = null;
+    scheduleDragRoomId = null;
+  }, 0);
+}
+
+function handleScheduleRoomDragOver(event, roomId) {
+  if (!scheduleDragBookingId) return;
+  const booking = getBookings().find(item => item.booking_id === scheduleDragBookingId);
+  const targetRoom = getRoomById(roomId);
+  if (!booking || !targetRoom) return;
+  if (getBookingRoomTypeKey(booking) !== normalizeRoomTypeName(targetRoom.type)) return;
+  if (scheduleDragRoomId === parseInt(roomId, 10)) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  clearScheduleDropHighlights();
+  if (event.currentTarget) event.currentTarget.classList.add('drag-over');
+}
+
+function handleScheduleRoomDragLeave(event) {
+  if (event.currentTarget) event.currentTarget.classList.remove('drag-over');
+}
+
+function buildTypeReassignmentPlan(bookings, typeKey, forcedAssignments = {}) {
+  const candidates = bookings.filter(booking => canBookingParticipateInAutoAssign(booking) && getBookingRoomTypeKey(booking) === typeKey);
+  const rooms = getRoomsByTypeKey(typeKey).map(room => room.id);
+  if (!candidates.length || !rooms.length) return new Map();
+
+  const assignments = new Map();
+  const fixedIds = new Set();
+
+  candidates.forEach(booking => {
+    const hasForcedRoom = Object.prototype.hasOwnProperty.call(forcedAssignments, booking.booking_id);
+    const forcedRoomId = hasForcedRoom ? parseInt(forcedAssignments[booking.booking_id], 10) : null;
+    const isFixed = !!booking.manual_room_locked || hasForcedRoom;
+    if (!isFixed) return;
+    const roomId = hasForcedRoom ? forcedRoomId : parseInt(booking.room_id, 10);
+    if (!rooms.includes(roomId)) {
+      throw new Error('Target room type mismatch');
+    }
+    assignments.set(booking.booking_id, roomId);
+    fixedIds.add(booking.booking_id);
+  });
+
+  for (let i = 0; i < candidates.length; i++) {
+    const current = candidates[i];
+    if (!assignments.has(current.booking_id)) continue;
+    for (let j = i + 1; j < candidates.length; j++) {
+      const other = candidates[j];
+      if (!assignments.has(other.booking_id)) continue;
+      if (assignments.get(current.booking_id) === assignments.get(other.booking_id) && bookingAssignmentsOverlap(current, other)) {
+        return null;
+      }
+    }
+  }
+
+  const movable = candidates
+    .filter(booking => !fixedIds.has(booking.booking_id))
+    .sort((a, b) => {
+      if (a.check_in_date !== b.check_in_date) return a.check_in_date.localeCompare(b.check_in_date);
+      if (a.check_out_date !== b.check_out_date) return a.check_out_date.localeCompare(b.check_out_date);
+      return String(a.booking_id).localeCompare(String(b.booking_id));
+    });
+
+  function hasConflict(booking, roomId) {
+    return candidates.some(other => {
+      if (other.booking_id === booking.booking_id) return false;
+      if (!assignments.has(other.booking_id)) return false;
+      if (assignments.get(other.booking_id) !== roomId) return false;
+      return bookingAssignmentsOverlap(booking, other);
+    });
+  }
+
+  function assignNext(index) {
+    if (index >= movable.length) return true;
+    const booking = movable[index];
+    const preferredRoomId = parseInt(booking.room_id, 10);
+    const orderedRooms = rooms.slice().sort((a, b) => {
+      if (a === preferredRoomId) return -1;
+      if (b === preferredRoomId) return 1;
+      return a - b;
+    });
+    for (const roomId of orderedRooms) {
+      if (hasConflict(booking, roomId)) continue;
+      assignments.set(booking.booking_id, roomId);
+      if (assignNext(index + 1)) return true;
+      assignments.delete(booking.booking_id);
+    }
+    return false;
+  }
+
+  return assignNext(0) ? assignments : null;
+}
+
+function applyManualRoomMove(bookingId, targetRoomId) {
+  const bookings = getBookings();
+  const booking = bookings.find(item => item.booking_id === bookingId);
+  const targetRoom = getRoomById(targetRoomId);
+  if (!booking || !targetRoom) return;
+
+  const targetTypeKey = normalizeRoomTypeName(targetRoom.type);
+  const sourceTypeKey = getBookingRoomTypeKey(booking);
+  if (!targetTypeKey || targetTypeKey !== sourceTypeKey) {
+    showToast('ย้ายได้เฉพาะห้องประเภทเดียวกัน');
+    return;
+  }
+
+  const currentRoomId = parseInt(booking.room_id, 10);
+  const nextRoomId = parseInt(targetRoomId, 10);
+  if (currentRoomId === nextRoomId) {
+    showToast('รายการนี้อยู่ห้องนี้อยู่แล้ว');
+    return;
+  }
+
+  let plan = null;
+  try {
+    plan = buildTypeReassignmentPlan(bookings, targetTypeKey, { [bookingId]: nextRoomId });
+  } catch (error) {
+    plan = null;
+  }
+
+  if (!plan) {
+    showToast('ไม่สามารถจัดสลับห้องอัตโนมัติได้');
+    return;
+  }
+
+  let shiftedCount = 0;
+  const updatedBookings = bookings.map(item => {
+    if (!plan.has(item.booking_id)) return item;
+    const assignedRoomId = plan.get(item.booking_id);
+    const assignedRoom = getRoomById(assignedRoomId);
+    if (!assignedRoom) return item;
+    if (parseInt(item.room_id, 10) !== assignedRoomId) shiftedCount += 1;
+    const nextBooking = {
+      ...item,
+      room_id: assignedRoomId,
+      room_type: assignedRoom.type,
+    };
+    if (item.booking_id === bookingId) {
+      nextBooking.manual_room_locked = true;
+      nextBooking.manual_room_locked_at = new Date().toISOString();
+    }
+    return nextBooking;
+  });
+
+  setBookings(updatedBookings);
+  renderSchedule();
+  showToast(shiftedCount > 1 ? `ย้ายสำเร็จ และจัดสลับเพิ่ม ${shiftedCount - 1} รายการ` : 'ย้ายห้องสำเร็จ');
+}
+
+function handleScheduleRoomDrop(event, roomId) {
+  event.preventDefault();
+  if (event.currentTarget) event.currentTarget.classList.remove('drag-over');
+  const bookingId = scheduleDragBookingId || (event.dataTransfer ? event.dataTransfer.getData('text/plain') : '');
+  if (!bookingId) return;
+  applyManualRoomMove(bookingId, roomId);
+}
+
+function renderWeekGantt() {
+  const ws = getWeekStart(getAnchorDate());
+  const days = Array.from({length:7},(_,i)=>addDays(ws,i));
+  const t = today();
+  const bookings = getBookings().filter(b=>b.status!=='Cancelled');
+  const ROOM_W = 68, DAY_W = 46;
+
+  // filter bookings overlapping this week
+  const we = days[6];
+  const wkBk = bookings.filter(b=>b.check_in_date<=we&&b.check_out_date>=ws);
+
+  let html = `<div style="width:${ROOM_W+7*DAY_W}px;padding:0 0 8px 16px;">`;
+
+  // Header
+  html += `<div style="display:flex;position:sticky;top:0;z-index:10;background:white;border-bottom:2px solid #E5E7EB;">`;
+  html += `<div style="width:${ROOM_W}px;min-width:${ROOM_W}px;padding:6px;font-size:10px;font-weight:700;color:var(--muted);border-right:1px solid #E5E7EB;flex-shrink:0;background:white;">ห้อง</div>`;
+  days.forEach(d=>{
+    const dt=new Date(d); const dow=dt.getDay();
+    const isToday=d===t; const isWknd=dow===0||dow===6;
+    html+=`<div style="width:${DAY_W}px;min-width:${DAY_W}px;text-align:center;padding:4px 2px;border-right:1px solid #F3F4F6;flex-shrink:0;background:${isToday?'rgba(247,176,0,0.15)':isWknd?'rgba(0,0,0,0.03)':'white'};">
+      <div style="font-size:11px;font-weight:${isToday?'800':'600'};color:${isToday?'var(--gold)':isWknd?'#EF4444':'var(--navy)'};">${dt.getDate()}</div>
+      <div style="font-size:9px;color:${isToday?'var(--gold)':isWknd?'#EF4444':'var(--muted)'};">${TH_DAYS_SHORT[dow]}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Rows
+  ROOMS.forEach(room=>{
+    const rb = wkBk.filter(b=>b.room_id==room.id);
+    html += `<div style="display:flex;height:38px;border-bottom:1px solid #F3F4F6;position:relative;">`;
+    html += `<div style="width:${ROOM_W}px;min-width:${ROOM_W}px;border-right:1px solid #E5E7EB;background:white;padding:0 6px;display:flex;flex-direction:column;justify-content:center;flex-shrink:0;position:sticky;left:0;z-index:3;">
+      <span style="font-size:11px;font-weight:700;color:var(--navy);">${room.id}</span>
+      <span style="font-size:8px;color:var(--muted);">${room.type.replace('Deluxe ','').replace('Superior ','Sup. ').replace('Honeymoon Suite','H.Suite')}</span>
+    </div>`;
+    // day cells
+    html += `<div style="display:flex;flex:1;position:relative;">`;
+    days.forEach((d,i)=>{
+      const dt=new Date(d);const dow=dt.getDay();const isToday=d===t;const isWknd=dow===0||dow===6;
+      html+=`<div style="width:${DAY_W}px;min-width:${DAY_W}px;height:100%;border-right:1px solid #F3F4F6;flex-shrink:0;background:${isToday?'rgba(247,176,0,0.08)':isWknd?'rgba(0,0,0,0.02)':'transparent'};"></div>`;
+    });
+    // booking blocks
+    rb.forEach(b=>{
+      const ci = new Date(Math.max(new Date(b.check_in_date),new Date(ws)));
+      const co = new Date(Math.min(new Date(b.check_out_date),new Date(addDays(we,1))));
+      const startIdx = days.indexOf(ci.toISOString().split('T')[0]);
+      const endIdx   = days.indexOf(co.toISOString().split('T')[0]);
+      const si = startIdx>=0?startIdx:0;
+      const span = Math.max(1,(endIdx>=0?endIdx:7)-si);
+      const left = si*DAY_W+2;
+      const width = span*DAY_W-4;
+      let bg='var(--navy)',col='white';
+      if(b.status==='Pending'){bg='#FEF3C7';col='#92400E';}
+      else if(b.status==='Checked Out'||b.status==='No Show'){bg='#E5E7EB';col='#6B7280';}
+      html+=`<div onclick="openGuestModal('${b.booking_id}')" style="position:absolute;left:${left}px;top:4px;bottom:4px;width:${width}px;background:${bg};color:${col};border-radius:6px;display:flex;align-items:center;padding:0 6px;font-size:10px;font-weight:700;overflow:hidden;white-space:nowrap;cursor:pointer;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,0.12);">${b.guest_name.split(' ')[0]}</div>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  document.getElementById('week-inner').innerHTML = html;
+
+  // scroll to room label position
+  setTimeout(()=>{ const w=document.getElementById('week-wrap'); if(w)w.scrollLeft=0; },50);
+}
+
+// -------- MONTH helpers (existing, patched to use unified state) --------
+function getMonthBookings() {
+  const cm = getCalMonth();
+  const bookings = getBookings();
+  const firstDay = `${cm.year}-${String(cm.month+1).padStart(2,'0')}-01`;
+  const nextMonthFirst = cm.month === 11
+    ? `${cm.year + 1}-01-01`
+    : `${cm.year}-${String(cm.month + 2).padStart(2,'0')}-01`;
+  return bookings.filter(b => b.status !== 'Cancelled' && b.check_in_date < nextMonthFirst && b.check_out_date > firstDay);
+}
+function renderCalViewContent() {
+  if (currentCalView==='gantt')    renderGantt();
+  else if (currentCalView==='calendar') renderCalendarGrid();
+  else if (currentCalView==='summary')  renderMonthlySummary();
+}
+
+function renderGantt() {
+  const cm=getCalMonth();const dim=getDaysInMonth(cm.year,cm.month);
+  const t=today();const bookings=getMonthBookings();
+  const RL=68,DW=28;
+  let hdr=`<div style="display:flex;position:sticky;top:0;z-index:10;background:white;border-bottom:2px solid #E5E7EB;">`;
+  hdr+=`<div style="width:${RL}px;min-width:${RL}px;font-size:10px;font-weight:700;color:var(--muted);padding:6px;border-right:1px solid #E5E7EB;background:white;flex-shrink:0;display:flex;align-items:center;">ห้อง</div>`;
+  for(let d=1;d<=dim;d++){
+    const ds=`${cm.year}-${String(cm.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow=new Date(ds).getDay();const isT=ds===t;const isW=dow===0||dow===6;
+    hdr+=`<div style="width:${DW}px;min-width:${DW}px;text-align:center;font-size:9px;font-weight:${isT?'800':'600'};padding:3px 0;border-right:1px solid #F3F4F6;flex-shrink:0;background:${isT?'rgba(247,176,0,0.15)':isW?'rgba(0,0,0,0.03)':'white'};color:${isT?'var(--gold)':isW?'#EF4444':'var(--muted)'};"><div>${d}</div><div style="font-size:8px;opacity:0.7;">${TH_DAYS_SHORT[dow]}</div></div>`;
+  }
+  hdr+=`</div>`;
+  let rows='';
+  ROOMS.forEach(room=>{
+    const rb=bookings.filter(b=>b.room_id==room.id);
+    rows+=`<div style="display:flex;height:36px;border-bottom:1px solid #F3F4F6;position:relative;">`;
+    rows+=`<div style="width:${RL}px;min-width:${RL}px;font-size:10px;font-weight:700;color:var(--navy);padding:0 6px;border-right:1px solid #E5E7EB;background:white;flex-shrink:0;display:flex;flex-direction:column;justify-content:center;z-index:3;position:sticky;left:0;"><span>${room.id}</span><span style="font-size:8px;color:var(--muted);font-weight:400;">${room.type.replace('Deluxe ','').replace('Superior ','Sup. ').replace('Honeymoon Suite','H.Suite')}</span></div>`;
+    rows+=`<div style="display:flex;position:relative;flex:1;">`;
+    for(let d=1;d<=dim;d++){
+      const ds=`${cm.year}-${String(cm.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dow=new Date(ds).getDay();const isT=ds===t;const isW=dow===0||dow===6;
+      rows+=`<div style="width:${DW}px;min-width:${DW}px;height:100%;border-right:1px solid #F3F4F6;flex-shrink:0;background:${isT?'rgba(247,176,0,0.08)':isW?'rgba(0,0,0,0.02)':'transparent'};"></div>`;
+    }
+    rb.forEach(b=>{
+      const mf=new Date(`${cm.year}-${String(cm.month+1).padStart(2,'0')}-01`);
+      const ml=new Date(`${cm.year}-${String(cm.month+1).padStart(2,'0')}-${String(dim).padStart(2,'0')}`);
+      const ci=new Date(Math.max(new Date(b.check_in_date),mf));
+      const co=new Date(Math.min(new Date(b.check_out_date),new Date(ml.getTime()+86400000)));
+      const sd=ci.getDate(),ed=co.getDate();
+      const span=Math.max(1,ed-sd);
+      const left=(sd-1)*DW,width=span*DW-2;
+      let bg='var(--navy)',col='white';
+      if(b.status==='Pending'){bg='#FEF3C7';col='#92400E';}
+      else if(b.status==='Checked Out'||b.status==='No Show'){bg='#E5E7EB';col='#6B7280';}
+      rows+=`<div onclick="openGuestModal('${b.booking_id}')" style="position:absolute;left:${left}px;top:4px;bottom:4px;width:${width}px;background:${bg};color:${col};border-radius:6px;display:flex;align-items:center;padding:0 5px;font-size:9px;font-weight:700;overflow:hidden;white-space:nowrap;cursor:pointer;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,0.15);" title="${b.guest_name}">${b.guest_name.split(' ')[0]}</div>`;
+    });
+    rows+=`</div></div>`;
+  });
+  const tw=RL+dim*DW;
+  document.getElementById('gantt-inner').innerHTML=`<div style="width:${tw + 32}px;padding:0 16px 12px;min-height:100%;">${hdr}${rows}</div>`;
+  const ta=new Date(t);
+  if(ta.getFullYear()===cm.year&&ta.getMonth()===cm.month){
+    setTimeout(()=>{ const w=document.getElementById('gantt-wrap');if(w)w.scrollLeft=Math.max(0,(ta.getDate()-4)*DW);},50);
+  }
+}
+
+function renderCalendarGrid() {
+  const cm=getCalMonth();const dim=getDaysInMonth(cm.year,cm.month);
+  const t=today();const bookings=getMonthBookings();
+  const fd=new Date(`${cm.year}-${String(cm.month+1).padStart(2,'0')}-01`).getDay();
+  let html=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px;">`;
+  TH_DAYS_SHORT.forEach(d=>html+=`<div style="text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px 0;">${d}</div>`);
+  html+=`</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">`;
+  for(let i=0;i<fd;i++) html+=`<div style="min-height:54px;"></div>`;
+  for(let d=1;d<=dim;d++){
+    const ds=`${cm.year}-${String(cm.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isT=ds===t;
+    const occ=bookings.filter(b=>b.check_in_date<=ds&&b.check_out_date>ds).length;
+    const ci=bookings.filter(b=>b.check_in_date===ds).length;
+    const co=bookings.filter(b=>b.check_out_date===ds).length;
+    const oc=occ>=10?'#EF4444':occ>=6?'#F59E0B':occ>0?'#22C55E':'#E5E7EB';
+    html+=`<div onclick="showDayDetail('${ds}')" style="background:${isT?'var(--navy)':occ>0?'white':'#FAFAF9'};border-radius:10px;padding:5px 3px;min-height:54px;cursor:pointer;border:${isT?'2px solid var(--gold)':'1.5px solid #F3F4F6'};">
+      <div style="text-align:center;font-size:13px;font-weight:700;color:${isT?'var(--gold)':occ>0?'var(--navy)':'var(--muted)'};">${d}</div>
+      ${occ?`<div style="text-align:center;font-size:10px;font-weight:700;color:${oc};">${occ}<span style="font-size:7px;font-weight:400;">/13</span></div>`:''}
+      <div style="display:flex;justify-content:center;gap:1px;margin-top:2px;">
+        ${ci?`<span style="background:#DCFCE7;color:#166534;border-radius:3px;padding:1px 3px;font-size:8px;font-weight:700;">↓${ci}</span>`:''}
+        ${co?`<span style="background:#FEE2E2;color:#991B1B;border-radius:3px;padding:1px 3px;font-size:8px;font-weight:700;">↑${co}</span>`:''}
+      </div>
+    </div>`;
+  }
+  html+=`</div><div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);">↓ Check-in · ↑ Check-out · <span style="color:#22C55E;">●</span>1-5 · <span style="color:#F59E0B;">●</span>6-9 · <span style="color:#EF4444;">●</span>10+</div>`;
+  document.getElementById('cal-month-grid').innerHTML=html;
+}
+
+function showDayDetail(dateStr) {
+  const bookings=getBookings();
+  const staying=bookings.filter(b=>b.check_in_date<=dateStr&&b.check_out_date>dateStr&&b.status!=='Cancelled');
+  const ci=bookings.filter(b=>b.check_in_date===dateStr&&b.status!=='Cancelled');
+  const co=bookings.filter(b=>b.check_out_date===dateStr&&b.status!=='Cancelled');
+  let html=`<div style="padding:0 16px 24px;">
+    <div class="font-serif" style="font-size:18px;color:var(--navy);margin-bottom:4px;">${formatShortDate(dateStr)}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">${staying.length} ห้องมีแขก · ${ci.length} check-in · ${co.length} check-out</div>`;
+  if(ci.length){html+=`<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:8px;">🛎️ Check-in</div>`;html+=ci.map(b=>`<div onclick="openGuestModal('${b.booking_id}');closeAllModals();" style="background:#DCFCE7;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;font-size:13px;">${b.guest_name}</div><div style="font-size:11px;color:#166534;">ห้อง ${b.room_id}</div></div>${getStatusBadge(b.status)}</div>`).join('');}
+  if(co.length){html+=`<div style="font-weight:700;font-size:13px;color:var(--navy);margin:12px 0 8px;">🚪 Check-out</div>`;html+=co.map(b=>`<div onclick="openGuestModal('${b.booking_id}');closeAllModals();" style="background:#FEE2E2;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;font-size:13px;">${b.guest_name}</div><div style="font-size:11px;color:#991B1B;">ห้อง ${b.room_id}</div></div>${getStatusBadge(b.status)}</div>`).join('');}
+  if(staying.length){html+=`<div style="font-weight:700;font-size:13px;color:var(--navy);margin:12px 0 8px;">🛏️ กำลังพัก</div>`;html+=staying.filter(b=>b.check_in_date!==dateStr&&b.check_out_date!==dateStr).map(b=>`<div onclick="openGuestModal('${b.booking_id}');closeAllModals();" style="background:#F3F4F6;border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;font-size:13px;">${b.guest_name}</div><div style="font-size:11px;color:var(--muted);">ห้อง ${b.room_id} · ออก ${formatShortDate(b.check_out_date)}</div></div></div>`).join('');}
+  html+=`</div>`;
+  showBottomSheet(html);
+}
+
+function renderMonthlySummary() {
+  const cm=getCalMonth();const dim=getDaysInMonth(cm.year,cm.month);
+  const bookings=getMonthBookings();
+  let rn=0;
+  for(let d=1;d<=dim;d++){const ds=`${cm.year}-${String(cm.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;rn+=bookings.filter(b=>b.check_in_date<=ds&&b.check_out_date>ds).length;}
+  const occ=Math.round(rn/(13*dim)*100);
+  const src={};bookings.forEach(b=>{const s=b.booking_source||'Direct';src[s]=(src[s]||0)+1;});
+  const srcEntries=Object.entries(src).sort((a,b)=>b[1]-a[1]);
+  const byType={};bookings.forEach(b=>{const tp=b.room_type||'Unknown';byType[tp]=(byType[tp]||0)+1;});
+  const nat={};bookings.forEach(b=>{if(b.nationality){nat[b.nationality]=(nat[b.nationality]||0)+1;}});
+  const natEntries=Object.entries(nat).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const weeks=[[],[],[],[],[]];
+  for(let d=1;d<=dim;d++){const ds=`${cm.year}-${String(cm.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const oc=bookings.filter(b=>b.check_in_date<=ds&&b.check_out_date>ds).length;weeks[Math.min(4,Math.floor((d-1)/7))].push(oc);}
+  const wAvg=weeks.filter(w=>w.length>0).map(w=>Math.round(w.reduce((a,b)=>a+b,0)/w.length));
+  const mxW=Math.max(13,...wAvg);
+  const srcColors={'Booking.com':'#003580','Airbnb':'#FF5A5F','Agoda':'#E50000','Direct':'var(--navy)','Walk-in':'#6B7280'};
+  let html='';
+  html+=`<div class="month-stat-card" style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div style="font-weight:700;color:var(--navy);">Occupancy</div><div style="font-size:22px;font-weight:800;color:var(--navy);">${occ}%</div></div><div style="background:#F3F4F6;border-radius:6px;height:10px;overflow:hidden;margin-bottom:4px;"><div style="height:100%;width:${occ}%;background:${occ>=80?'var(--green)':occ>=50?'var(--amber)':'var(--red)'};border-radius:6px;transition:width 0.6s;"></div></div><div style="font-size:12px;color:var(--muted);">${rn} room-nights / ${13*dim}</div></div>`;
+  html+=`<div class="month-stat-card" style="margin-bottom:12px;"><div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:10px;">📈 รายสัปดาห์</div><div style="display:flex;gap:6px;align-items:flex-end;height:56px;">${wAvg.map((v,i)=>{const h=Math.round(v/mxW*100);const p=Math.round(v/13*100);return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;"><div style="font-size:9px;font-weight:700;color:var(--navy);">${p}%</div><div style="width:100%;height:${h}%;min-height:4px;background:var(--navy);border-radius:4px 4px 0 0;opacity:${0.4+i*0.15};"></div><div style="font-size:9px;color:var(--muted);">W${i+1}</div></div>`;}).join('')}</div></div>`;
+  if(srcEntries.length) html+=`<div class="month-stat-card" style="margin-bottom:12px;"><div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:10px;">📡 Booking Source</div>${srcEntries.map(([s,n])=>{const p=Math.round(n/bookings.length*100);return `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="font-weight:600;">${s}</span><span style="color:var(--muted);">${n} (${p}%)</span></div><div style="background:#F3F4F6;border-radius:4px;height:6px;overflow:hidden;"><div style="height:100%;width:${p}%;background:${srcColors[s]||'var(--navy)'};border-radius:4px;"></div></div></div>`;}).join('')}</div>`;
+  if(Object.keys(byType).length) html+=`<div class="month-stat-card" style="margin-bottom:12px;"><div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:10px;">🛏️ Room Type</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${Object.entries(byType).map(([tp,n])=>`<div style="background:#F8F7F5;border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:700;color:var(--navy);">${n}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">${tp.replace('Deluxe ','').replace('Superior ','Sup. ')}</div></div>`).join('')}</div></div>`;
+  if(natEntries.length) html+=`<div class="month-stat-card" style="margin-bottom:12px;"><div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:10px;">🌍 สัญชาติ</div><div style="display:flex;flex-wrap:wrap;gap:8px;">${natEntries.map(([n,c])=>`<div style="background:#F8F7F5;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;">${getFlagEmoji(n)} ${n} <span style="color:var(--muted);font-weight:400;font-size:11px;">${c}</span></div>`).join('')}</div></div>`;
+  html+=`<div class="month-stat-card"><div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:10px;">📋 รายการจอง (${bookings.length})</div>${bookings.length===0?'<div style="color:var(--muted);font-size:13px;">ไม่มีการจองในเดือนนี้</div>':bookings.sort((a,b)=>a.check_in_date>b.check_in_date?1:-1).map(b=>`<div onclick="openGuestModal('${b.booking_id}')" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F3F4F6;cursor:pointer;"><div style="background:var(--navy);color:var(--gold);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">${b.room_id}</div><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${b.guest_name}</div><div style="font-size:11px;color:var(--muted);">${formatShortDate(b.check_in_date)} → ${formatShortDate(b.check_out_date)}</div></div>${getStatusBadge(b.status)}</div>`).join('')}</div>`;
+  document.getElementById('month-summary-detail').innerHTML=html;
+}
+
+function renderWeekGantt() {
+  const ws = getWeekStart(getAnchorDate());
+  const days = Array.from({length: 7}, (_, i) => addDays(ws, i));
+  const t = today();
+  const bookings = getBookings().filter(b => b.status !== 'Cancelled');
+  const { roomLabel: ROOM_W, dayWidth: DAY_W, rowHeight: ROW_H } = getScheduleMetrics('week');
+  const trackWidth = days.length * DAY_W;
+  const we = days[6];
+  const weekEndExclusive = addDays(we, 1);
+  const wkBk = bookings.filter(b => b.check_in_date < weekEndExclusive && b.check_out_date > ws);
+
+  let html = `<div style="width:${ROOM_W + trackWidth + 32}px;padding:0 16px 12px;min-height:100%;background:linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);">`;
+  html += `<div style="display:flex;position:sticky;top:0;z-index:12;background:rgba(255,255,255,0.96);border-bottom:2px solid #E2E8F0;backdrop-filter:blur(14px);">`;
+  html += `<div style="width:${ROOM_W}px;min-width:${ROOM_W}px;padding:8px 10px;font-size:10px;font-weight:800;color:var(--muted);border-right:1px solid #E5E7EB;flex-shrink:0;background:rgba(255,255,255,0.98);text-transform:uppercase;letter-spacing:0.08em;">Rooms</div>`;
+  days.forEach(d => {
+    const dt = new Date(d);
+    const dow = dt.getDay();
+    const isToday = d === t;
+    const isWknd = dow === 0 || dow === 6;
+    html += `<div style="width:${DAY_W}px;min-width:${DAY_W}px;text-align:center;padding:6px 2px;border-right:1px solid #F1F5F9;flex-shrink:0;background:${isToday ? 'rgba(247,176,0,0.14)' : isWknd ? 'rgba(148,163,184,0.08)' : 'rgba(255,255,255,0.94)'};">
+      <div style="font-size:13px;font-weight:${isToday ? '800' : '700'};color:${isToday ? '#B45309' : isWknd ? '#DC2626' : 'var(--navy)'};">${dt.getDate()}</div>
+      <div style="font-size:9px;color:${isToday ? '#B45309' : isWknd ? '#DC2626' : 'var(--muted)'};text-transform:uppercase;letter-spacing:0.04em;">${TH_DAYS_SHORT[dow]}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  getFloorGroups().forEach(group => {
+    html += renderScheduleFloorDivider(group.floor, ROOM_W, trackWidth, group.rooms.length);
+    group.rooms.forEach((room, roomIndex) => {
+      const rb = wkBk.filter(b => b.room_id == room.id);
+      const rowBg = roomIndex % 2 === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(248,250,252,0.92)';
+      html += `<div style="display:flex;height:${ROW_H}px;border-bottom:1px solid #E2E8F0;position:relative;background:${rowBg};">`;
+      html += `<div style="width:${ROOM_W}px;min-width:${ROOM_W}px;border-right:1px solid #E2E8F0;background:${rowBg};padding:0 10px;display:flex;flex-direction:column;justify-content:center;flex-shrink:0;position:sticky;left:0;z-index:4;box-shadow:8px 0 18px rgba(148,163,184,0.08);">
+        <span style="font-size:14px;font-weight:800;color:var(--navy);line-height:1;">${room.id}</span>
+        <span style="font-size:9px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:0.05em;">${getRoomTypeCompact(room.type)}</span>
+      </div>`;
+      html += `<div class="schedule-drop-row" data-room-id="${room.id}" ondragover="handleScheduleRoomDragOver(event, ${room.id})" ondragleave="handleScheduleRoomDragLeave(event)" ondrop="handleScheduleRoomDrop(event, ${room.id})" style="display:flex;flex:1;position:relative;">`;
+      days.forEach(d => {
+        const dt = new Date(d);
+        const dow = dt.getDay();
+        const isToday = d === t;
+        const isWknd = dow === 0 || dow === 6;
+        html += `<div style="width:${DAY_W}px;min-width:${DAY_W}px;height:100%;border-right:1px solid #EDF2F7;flex-shrink:0;background:${isToday ? 'rgba(247,176,0,0.08)' : isWknd ? 'rgba(148,163,184,0.06)' : 'transparent'};"></div>`;
+      });
+      rb.forEach(b => {
+        const clippedStart = b.check_in_date > ws ? b.check_in_date : ws;
+        const clippedEnd = b.check_out_date < weekEndExclusive ? b.check_out_date : weekEndExclusive;
+        if (clippedEnd <= clippedStart) return;
+        const startOffset = diffIsoDays(ws, clippedStart);
+        const span = Math.max(1, diffIsoDays(clippedStart, clippedEnd));
+        const left = startOffset * DAY_W + 3;
+        const width = Math.max(DAY_W - 6, span * DAY_W - 6);
+        const tone = getBookingTone(b.status);
+        const detailed = width > 120;
+        html += `<div class="schedule-booking${b.manual_room_locked ? ' schedule-booking-locked' : ''}" onclick="handleScheduleBookingClick(event, '${b.booking_id}')" draggable="true" ondragstart="handleScheduleBookingDragStart(event, '${b.booking_id}')" ondragend="handleScheduleBookingDragEnd(event)" style="position:absolute;left:${left}px;top:5px;bottom:5px;width:${width}px;background:${tone.bg};color:${tone.color};border:1px solid ${tone.border};border-radius:10px;display:flex;align-items:center;gap:6px;padding:0 8px;font-size:11px;font-weight:700;overflow:hidden;white-space:nowrap;cursor:pointer;z-index:2;box-shadow:0 10px 20px rgba(15,23,42,0.12);" title="${b.guest_name}${b.manual_room_locked ? ' | Locked by staff move' : ''}">
+          <span style="width:7px;height:7px;border-radius:50%;background:${tone.color};opacity:0.75;flex-shrink:0;"></span>
+          <span style="overflow:hidden;text-overflow:ellipsis;">${getGuestChipLabel(b.guest_name, detailed)}</span>
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+  });
+  html += `</div>`;
+  document.getElementById('week-inner').innerHTML = html;
+  setTimeout(() => { const w = document.getElementById('week-wrap'); if (w) w.scrollLeft = 0; }, 50);
+}
+
+function renderGantt() {
+  const cm = getCalMonth();
+  const dim = getDaysInMonth(cm.year, cm.month);
+  const t = today();
+  const bookings = getMonthBookings();
+  const { roomLabel: RL, dayWidth: DW, rowHeight: RH } = getScheduleMetrics('month');
+  const trackWidth = dim * DW;
+  const monthStart = `${cm.year}-${String(cm.month + 1).padStart(2, '0')}-01`;
+  const monthEndExclusive = cm.month === 11
+    ? `${cm.year + 1}-01-01`
+    : `${cm.year}-${String(cm.month + 2).padStart(2, '0')}-01`;
+  let hdr = `<div style="display:flex;position:sticky;top:0;z-index:12;background:rgba(255,255,255,0.96);border-bottom:2px solid #E2E8F0;backdrop-filter:blur(14px);">`;
+  hdr += `<div style="width:${RL}px;min-width:${RL}px;font-size:10px;font-weight:800;color:var(--muted);padding:8px 10px;border-right:1px solid #E5E7EB;background:rgba(255,255,255,0.98);flex-shrink:0;display:flex;align-items:center;text-transform:uppercase;letter-spacing:0.08em;">Rooms</div>`;
+  for (let d = 1; d <= dim; d++) {
+    const ds = `${cm.year}-${String(cm.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dow = new Date(ds).getDay();
+    const isT = ds === t;
+    const isW = dow === 0 || dow === 6;
+    hdr += `<div style="width:${DW}px;min-width:${DW}px;text-align:center;font-size:10px;font-weight:${isT ? '800' : '700'};padding:5px 0;border-right:1px solid #F1F5F9;flex-shrink:0;background:${isT ? 'rgba(247,176,0,0.15)' : isW ? 'rgba(148,163,184,0.08)' : 'rgba(255,255,255,0.94)'};color:${isT ? '#B45309' : isW ? '#DC2626' : 'var(--muted)'};"><div>${d}</div><div style="font-size:8px;opacity:0.72;text-transform:uppercase;">${TH_DAYS_SHORT[dow]}</div></div>`;
+  }
+  hdr += `</div>`;
+
+  let rows = '';
+  getFloorGroups().forEach(group => {
+    rows += renderScheduleFloorDivider(group.floor, RL, trackWidth, group.rooms.length);
+    group.rooms.forEach((room, roomIndex) => {
+      const rb = bookings.filter(b => b.room_id == room.id);
+      const rowBg = roomIndex % 2 === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(248,250,252,0.92)';
+      rows += `<div style="display:flex;height:${RH}px;border-bottom:1px solid #E2E8F0;position:relative;background:${rowBg};">`;
+      rows += `<div style="width:${RL}px;min-width:${RL}px;font-size:10px;font-weight:700;color:var(--navy);padding:0 10px;border-right:1px solid #E2E8F0;background:${rowBg};flex-shrink:0;display:flex;flex-direction:column;justify-content:center;z-index:4;position:sticky;left:0;box-shadow:8px 0 18px rgba(148,163,184,0.08);"><span style="font-size:14px;font-weight:800;line-height:1;">${room.id}</span><span style="font-size:9px;color:var(--muted);font-weight:500;margin-top:4px;text-transform:uppercase;letter-spacing:0.05em;">${getRoomTypeCompact(room.type)}</span></div>`;
+      rows += `<div class="schedule-drop-row" data-room-id="${room.id}" ondragover="handleScheduleRoomDragOver(event, ${room.id})" ondragleave="handleScheduleRoomDragLeave(event)" ondrop="handleScheduleRoomDrop(event, ${room.id})" style="display:flex;position:relative;flex:1;">`;
+      for (let d = 1; d <= dim; d++) {
+        const ds = `${cm.year}-${String(cm.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dow = new Date(ds).getDay();
+        const isT = ds === t;
+        const isW = dow === 0 || dow === 6;
+        rows += `<div style="width:${DW}px;min-width:${DW}px;height:100%;border-right:1px solid #EDF2F7;flex-shrink:0;background:${isT ? 'rgba(247,176,0,0.08)' : isW ? 'rgba(148,163,184,0.06)' : 'transparent'};"></div>`;
+      }
+      rb.forEach(b => {
+        const clippedStart = b.check_in_date > monthStart ? b.check_in_date : monthStart;
+        const clippedEnd = b.check_out_date < monthEndExclusive ? b.check_out_date : monthEndExclusive;
+        if (clippedEnd <= clippedStart) return;
+        const startOffset = diffIsoDays(monthStart, clippedStart);
+        const span = Math.max(1, diffIsoDays(clippedStart, clippedEnd));
+        const left = startOffset * DW + 2;
+        const width = Math.max(DW - 4, span * DW - 4);
+        const tone = getBookingTone(b.status);
+        const detailed = width > 116;
+        rows += `<div class="schedule-booking${b.manual_room_locked ? ' schedule-booking-locked' : ''}" onclick="handleScheduleBookingClick(event, '${b.booking_id}')" draggable="true" ondragstart="handleScheduleBookingDragStart(event, '${b.booking_id}')" ondragend="handleScheduleBookingDragEnd(event)" style="position:absolute;left:${left}px;top:4px;bottom:4px;width:${width}px;background:${tone.bg};color:${tone.color};border:1px solid ${tone.border};border-radius:10px;display:flex;align-items:center;gap:6px;padding:0 7px;font-size:10px;font-weight:700;overflow:hidden;white-space:nowrap;cursor:pointer;z-index:2;box-shadow:0 10px 20px rgba(15,23,42,0.12);" title="${b.guest_name}${b.manual_room_locked ? ' | Locked by staff move' : ''}">
+          <span style="width:7px;height:7px;border-radius:50%;background:${tone.color};opacity:0.76;flex-shrink:0;"></span>
+          <span style="overflow:hidden;text-overflow:ellipsis;">${getGuestChipLabel(b.guest_name, detailed)}</span>
+        </div>`;
+      });
+      rows += `</div></div>`;
+    });
+  });
+
+  const tw = RL + trackWidth;
+  document.getElementById('gantt-inner').innerHTML = `<div style="width:${tw + 32}px;padding:0 16px 12px;min-height:100%;background:linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);">${hdr}${rows}</div>`;
+  const ta = new Date(t);
+  if (ta.getFullYear() === cm.year && ta.getMonth() === cm.month) {
+    setTimeout(() => { const w = document.getElementById('gantt-wrap'); if (w) w.scrollLeft = Math.max(0, (ta.getDate() - 4) * DW); }, 50);
+  }
+}
+
+// ==================== INIT ====================
+function init() {
+  const dateInput = document.getElementById('settingDate');
+  if (dateInput) dateInput.value = getSettingDate();
+  
+  // Initialize period state (default: Day)
+  calViewDate  = today();
+  currentPeriod = 'day';
+  updatePeriodButtons();
+  updateSubviewVisibility();
+  updateScheduleShell();
+
+  // TM30 check interval
+  setInterval(() => { if (document.getElementById('page-dashboard').classList.contains('active')) renderDashboard(); }, 60000);
+  
+  renderDashboard();
+}
+
+window.addEventListener('resize', syncTm30BannerOffset);
+
+init();
+</script>
+</body>
+</html>
