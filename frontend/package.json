@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "sync:legacy-assets": "node ./scripts/sync-legacy-assets.mjs",
+    "dev": "node ./scripts/sync-legacy-assets.mjs && vite",
+    "build": "node ./scripts/sync-legacy-assets.mjs && vite build",
+    "preview": "node ./scripts/sync-legacy-assets.mjs && vite preview"
   },
   "dependencies": {
     "react": "^18.3.1",
