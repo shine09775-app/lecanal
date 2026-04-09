@@ -62,3 +62,14 @@ npm run dev
 - Conflict detection is enforced both in service logic and the database exclusion constraint.
 - OTA sync/import stubs are prepared in `backend/src/services/otaService.js`.
 - Drag across empty cells to create a booking, drag a booking to another row to change room, and drag booking edges to resize stay dates.
+
+## Deploy on Vercel
+
+This repo now includes a root `vercel.json` so Vercel can deploy the Vite frontend and Express backend as one project.
+
+1. Import the repo into Vercel with the root directory set to `./`.
+2. In Project Settings -> Build & Deployment, set Framework Preset to `Services`.
+3. Add the `DATABASE_URL` environment variable in Vercel.
+4. Redeploy.
+
+Production requests from the frontend default to `/api`, while local development still uses `http://localhost:4000/api`.

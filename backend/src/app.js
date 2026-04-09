@@ -13,7 +13,7 @@ app.use(
   })
 );
 app.use(express.json());
-app.use('/api', routes);
+app.use(env.apiBasePath, routes);
 app.use(notFound);
 app.use(errorHandler);
 
