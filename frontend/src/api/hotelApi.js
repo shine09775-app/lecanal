@@ -42,4 +42,15 @@ export const hotelApi = {
       body: JSON.stringify({}),
     });
   },
+
+  // ── Digital Check-in ─────────────────────────────────────────────────
+  getCheckin(bookingId) {
+    return request(`/checkin/${bookingId}`);
+  },
+  saveCheckin(bookingId, payload) {
+    return request(`/checkin/${bookingId}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };

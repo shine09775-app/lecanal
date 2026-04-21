@@ -1,6 +1,7 @@
 const express = require('express');
 const roomsRoutes = require('./roomsRoutes');
 const bookingsRoutes = require('./bookingsRoutes');
+const checkinRoutes = require('./checkinRoutes');
 const { syncCalendar } = require('../services/otaService');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -12,6 +13,7 @@ router.get('/health', (req, res) => {
 
 router.use('/rooms', roomsRoutes);
 router.use('/bookings', bookingsRoutes);
+router.use('/checkin', checkinRoutes);
 
 router.post(
   '/ota/sync',

@@ -209,6 +209,18 @@ export default function BookingModal({
               <div className="flex flex-wrap gap-2">
                 {booking ? (
                   <>
+                    {/* ── Digital Check-in button ── */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = `/checkin.html?id=${booking.id}`;
+                        window.open(url, '_blank', 'noopener');
+                      }}
+                      className="rounded border border-bcom-green bg-green-50 px-3 py-2 text-sm font-semibold text-bcom-green hover:bg-green-100 transition-colors"
+                      title="Open digital check-in form for this guest"
+                    >
+                      ✓ Check In
+                    </button>
                     <button
                       type="button"
                       onClick={() => onExtendStay(booking)}
