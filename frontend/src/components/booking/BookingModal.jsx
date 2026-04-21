@@ -245,6 +245,9 @@ export default function BookingModal({
                 <button
                   type="button"
                   onClick={onClose}
+                <button
+                  type="button"
+                  onClick={onClose}
                   className="rounded border border-bcom-border px-4 py-2 text-sm font-medium text-bcom-text hover:bg-bcom-gray transition-colors"
                 >
                   Cancel

@@ -10,7 +10,7 @@ export default function AppShell({ children }) {
               <div className="flex items-center gap-2">
                 <span className="text-xl font-bold text-white tracking-tight">Le Canal</span>
                 <span className="rounded bg-bcom-yellow px-1.5 py-0.5 text-[10px] font-bold text-bcom-navy uppercase tracking-wide">
-                  Extranet
+                  Front Desk
                 </span>
               </div>
               {/* Nav links */}
